@@ -32,13 +32,16 @@ export default async function ProjectLayout({
       </div>
       <nav className="flex gap-4 text-sm border-b pb-2">
         <Link href={`/dashboard/${projectSlug}`} className="hover:text-black">
-          Overview
+          Leads
         </Link>
-        <Link href={`/dashboard/${projectSlug}/links/new`} className="hover:text-black">
-          New Pitch Link
+        <Link href={`/dashboard/${projectSlug}/product`} className="hover:text-black">
+          Product
         </Link>
         <Link href={`/dashboard/${projectSlug}/analytics`} className="hover:text-black">
           Analytics
+        </Link>
+        <Link href={`/dashboard/${projectSlug}/campaign`} className="hover:text-black">
+          Campaign
         </Link>
       </nav>
       {children}
