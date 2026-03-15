@@ -35,32 +35,29 @@ export default async function LeadsPage({
 
   return (
     <div className="space-y-6">
-      {/* Company-agnostic pitch link */}
-      <div className="border rounded-lg p-4 bg-gray-50 flex items-center justify-between gap-4">
+      {/* Generic pitch link */}
+      <div className="bg-[#111] border border-[#222] rounded-xl p-4 flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-sm font-medium">Generic product pitch</p>
-          <p className="text-xs text-gray-400 mt-0.5 truncate">{agnosticUrl}</p>
+          <p className="text-sm font-medium text-white">Generic product pitch</p>
+          <p className="text-xs text-[#555] mt-0.5 truncate">{agnosticUrl}</p>
         </div>
         <CopyButton text={agnosticUrl} label="Copy agnostic pitch link" />
       </div>
 
       {/* Leads header */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <h2 className="text-lg font-semibold">Leads</h2>
+        <h2 className="text-lg font-semibold text-white">Leads</h2>
         <div className="flex items-center gap-3">
-          <CsvImport
-            projectId={project.id}
-            projectSlug={projectSlug}
-          />
+          <CsvImport projectId={project.id} projectSlug={projectSlug} />
           <Link
             href={`/dashboard/${projectSlug}/campaign`}
-            className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-gray-50 transition-colors"
+            className="rounded-lg border border-[#2a2a2a] text-[#aaa] hover:text-white hover:border-[#444] px-4 py-2 text-sm font-medium transition-colors"
           >
             Mail Campaign
           </Link>
           <Link
             href={`/dashboard/${projectSlug}/links/new`}
-            className="rounded-md bg-black text-white px-4 py-2 text-sm font-medium hover:bg-gray-800 transition-colors"
+            className="rounded-lg bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 text-sm font-medium transition-colors"
           >
             Add lead
           </Link>
@@ -68,29 +65,29 @@ export default async function LeadsPage({
       </div>
 
       {leads && leads.length > 0 ? (
-        <div className="grid gap-3">
+        <div className="grid gap-2">
           {leads.map((lead) => (
             <Link
               key={lead.id}
               href={`/dashboard/${projectSlug}/leads/${lead.slug}`}
-              className="flex items-center justify-between border rounded-lg p-4 hover:border-black transition-colors"
+              className="flex items-center justify-between bg-[#111] border border-[#222] hover:border-violet-500/50 rounded-xl p-4 transition-colors group"
             >
               <div className="min-w-0">
-                <h3 className="font-medium">{lead.prospect_name}</h3>
+                <h3 className="font-medium text-white group-hover:text-violet-300 transition-colors">{lead.prospect_name}</h3>
                 <div className="flex gap-3 mt-0.5">
                   {lead.prospect_url && (
-                    <p className="text-sm text-gray-400 truncate">{lead.prospect_url}</p>
+                    <p className="text-sm text-[#555] truncate">{lead.prospect_url}</p>
                   )}
                   {lead.contact_email && (
-                    <p className="text-sm text-gray-400">{lead.contact_email}</p>
+                    <p className="text-sm text-[#555]">{lead.contact_email}</p>
                   )}
                 </div>
               </div>
               <span
-                className={`shrink-0 text-xs px-2 py-0.5 rounded font-medium ${
+                className={`shrink-0 text-xs px-2 py-0.5 rounded-md font-medium ${
                   lead.status === "active"
-                    ? "bg-green-100 text-green-700"
-                    : "bg-gray-100 text-gray-600"
+                    ? "bg-emerald-950/60 text-emerald-400 border border-emerald-800/40"
+                    : "bg-[#1a1a1a] text-[#666] border border-[#2a2a2a]"
                 }`}
               >
                 {lead.status}
@@ -99,11 +96,9 @@ export default async function LeadsPage({
           ))}
         </div>
       ) : (
-        <div className="border-2 border-dashed rounded-lg p-12 text-center">
-          <p className="text-sm text-gray-500">No leads yet.</p>
-          <p className="text-xs text-gray-400 mt-1">
-            Add leads manually or import a CSV.
-          </p>
+        <div className="border-2 border-dashed border-[#1e1e1e] rounded-xl p-12 text-center">
+          <p className="text-sm text-[#555]">No leads yet.</p>
+          <p className="text-xs text-[#444] mt-1">Add leads manually or import a CSV.</p>
         </div>
       )}
     </div>

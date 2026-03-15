@@ -17,33 +17,40 @@ export default async function ProjectLayout({
     .eq("slug", projectSlug)
     .single();
 
-  if (!project) {
-    notFound();
-  }
+  if (!project) notFound();
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4 text-sm text-gray-500">
-        <Link href="/dashboard" className="hover:text-black">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 text-sm text-[#555]">
+        <Link href="/dashboard" className="hover:text-white transition-colors flex items-center gap-1.5">
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
           Projects
         </Link>
         <span>/</span>
-        <span className="text-black font-medium">{project.company_name}</span>
+        <span className="text-white font-medium">{project.company_name}</span>
       </div>
-      <nav className="flex gap-4 text-sm border-b pb-2">
-        <Link href={`/dashboard/${projectSlug}`} className="hover:text-black">
-          Leads
-        </Link>
-        <Link href={`/dashboard/${projectSlug}/product`} className="hover:text-black">
-          Product
-        </Link>
-        <Link href={`/dashboard/${projectSlug}/analytics`} className="hover:text-black">
-          Analytics
-        </Link>
-        <Link href={`/dashboard/${projectSlug}/campaign`} className="hover:text-black">
-          Campaign
-        </Link>
+
+      {/* Tab nav — order: Leads → Product → Campaign → Analytics */}
+      <nav className="flex gap-1 border-b border-[#1a1a1a] pb-0">
+        {[
+          { label: "Leads", href: `/dashboard/${projectSlug}` },
+          { label: "Product", href: `/dashboard/${projectSlug}/product` },
+          { label: "Campaign", href: `/dashboard/${projectSlug}/campaign` },
+          { label: "Analytics", href: `/dashboard/${projectSlug}/analytics` },
+        ].map((tab) => (
+          <Link
+            key={tab.label}
+            href={tab.href}
+            className="px-4 py-2 text-sm text-[#666] hover:text-white transition-colors border-b-2 border-transparent hover:border-[#444] -mb-px"
+          >
+            {tab.label}
+          </Link>
+        ))}
       </nav>
+
       {children}
     </div>
   );

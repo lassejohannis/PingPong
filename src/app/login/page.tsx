@@ -39,23 +39,23 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <div className="w-full max-w-sm space-y-6">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">PitchLink</h1>
-          <p className="text-sm text-gray-500 mt-1">
+    <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a]">
+      <div className="w-full max-w-sm space-y-6 px-6">
+        <div className="text-center space-y-1">
+          <h1 className="text-2xl font-bold text-white">PitchLink</h1>
+          <p className="text-sm text-[#888]">
             {isSignUp ? "Create your account" : "Sign in to your account"}
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3">
           <input
             type="email"
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full rounded-md border px-3 py-2 text-sm"
+            className="w-full rounded-lg bg-[#111] border border-[#2a2a2a] text-white placeholder:text-[#555] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors"
           />
           <input
             type="password"
@@ -64,30 +64,27 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             required
             minLength={6}
-            className="w-full rounded-md border px-3 py-2 text-sm"
+            className="w-full rounded-lg bg-[#111] border border-[#2a2a2a] text-white placeholder:text-[#555] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors"
           />
 
           {error && (
-            <p className="text-sm text-red-600">{error}</p>
+            <p className="text-sm text-red-400">{error}</p>
           )}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-md bg-black text-white py-2 text-sm font-medium hover:bg-gray-800 disabled:opacity-50"
+            className="w-full rounded-lg bg-violet-600 hover:bg-violet-700 text-white py-2.5 text-sm font-medium disabled:opacity-50 transition-colors"
           >
             {loading ? "..." : isSignUp ? "Sign Up" : "Sign In"}
           </button>
         </form>
 
-        <p className="text-center text-sm text-gray-500">
+        <p className="text-center text-sm text-[#666]">
           {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
           <button
-            onClick={() => {
-              setIsSignUp(!isSignUp);
-              setError(null);
-            }}
-            className="underline"
+            onClick={() => { setIsSignUp(!isSignUp); setError(null); }}
+            className="text-violet-400 hover:text-violet-300 transition-colors"
           >
             {isSignUp ? "Sign In" : "Sign Up"}
           </button>

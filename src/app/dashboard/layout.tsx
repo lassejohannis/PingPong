@@ -10,9 +10,7 @@ export default async function DashboardLayout({
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect("/login");
-  }
+  if (!user) redirect("/login");
 
   const { data: profile } = await supabase
     .from("users")
@@ -25,19 +23,20 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen">
-      <nav className="border-b px-6 py-3 flex items-center justify-between">
-        <Link href="/dashboard" className="font-bold text-lg">
+    <div className="min-h-screen bg-[#0a0a0a]">
+      <nav className="border-b border-[#1a1a1a] px-6 py-3 flex items-center justify-between">
+        <Link href="/dashboard" className="font-bold text-lg text-white tracking-tight">
           PitchLink
         </Link>
-        <div className="flex items-center gap-4 text-sm">
-          <span className="text-gray-500">{user.email}</span>
-          <form action="/auth/signout" method="post">
-            <button type="submit" className="text-gray-500 hover:text-black">
-              Sign Out
-            </button>
-          </form>
-        </div>
+        <Link
+          href="/dashboard/account"
+          className="flex items-center gap-2 text-[#888] hover:text-white transition-colors"
+        >
+          <span className="w-7 h-7 rounded-full bg-[#1e1e1e] border border-[#2a2a2a] flex items-center justify-center text-xs font-semibold text-violet-400">
+            {(profile?.name ?? user.email ?? "?")[0].toUpperCase()}
+          </span>
+          <span className="hidden sm:inline text-sm">{profile?.name ?? user.email}</span>
+        </Link>
       </nav>
       <main className="p-6">{children}</main>
     </div>
