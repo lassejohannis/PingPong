@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound } from "next/navigation";
-import { PitchChat } from "@/components/pitch-chat";
+import PitchClient from "./pitch-client";
 
 export default async function PitchPage({
   params,
@@ -25,37 +25,43 @@ export default async function PitchPage({
     system_prompt: string | null;
   };
 
-  const settings = (project.settings ?? {}) as Record<string, string>;
-  const productName = settings.product_name ?? project.company_name;
-
   const { data: slides } = await admin
     .from("slides")
     .select("slide_index, title, description, image_url")
     .eq("project_id", pitchLink.project_id)
     .order("slide_index", { ascending: true });
 
-  return (
-    <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
-      {/* Header */}
-      <header className="h-14 border-b border-[#1a1a1a] px-5 flex items-center gap-3 shrink-0">
-        {pitchLink.prospect_logo && (
-          <img
-            src={pitchLink.prospect_logo}
-            alt={pitchLink.prospect_name}
-            className="h-7 w-7 rounded object-contain"
-          />
-        )}
-        <span className="text-sm font-semibold text-white">{pitchLink.headline}</span>
-        <span className="text-[#333] mx-1">·</span>
-        <span className="text-sm text-[#555]">{project.company_name}</span>
-      </header>
+  // Build opening message
+  const openingMessage =
+    `Hey! I know ${pitchLink.prospect_name} is doing great work. ` +
+    `I can walk you through how ${project.company_name} can specifically help. ` +
+    `What would you like to know?`;
 
-      <PitchChat
-        pitchLinkId={pitchLink.id}
-        prospectName={pitchLink.prospect_name}
-        productName={productName}
-        slides={slides ?? []}
-      />
-    </div>
+  // Default suggested questions
+  const suggestedQuestions = [
+    "What does it cost?",
+    "How does it work?",
+    "Show me case studies",
+    "What makes you different?",
+  ];
+
+  return (
+    <PitchClient
+      slug={pitchLinkSlug}
+      systemPrompt={project.system_prompt || "You are a helpful sales assistant."}
+      slides={
+        (slides || []).map((s) => ({
+          index: s.slide_index,
+          title: s.title,
+          description: s.description || "",
+          image_url: s.image_url,
+        }))
+      }
+      prospectName={pitchLink.prospect_name}
+      prospectLogo={pitchLink.prospect_logo}
+      headline={pitchLink.headline}
+      openingMessage={openingMessage}
+      suggestedQuestions={suggestedQuestions}
+    />
   );
 }

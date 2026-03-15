@@ -4,79 +4,84 @@
 PitchLink lets salespeople create personalized, AI-powered pitch pages for prospects. Instead of a static PDF, the prospect gets an interactive link where an AI agent presents the product, answers questions, navigates slides, and qualifies them in real time.
 
 ## Tech Stack
-- **Framework:** Next.js (App Router) + React 19 + TypeScript
+- **Framework:** Next.js 16 (App Router) + React 19 + TypeScript
 - **Styling:** Tailwind CSS v4
 - **Database:** Supabase (PostgreSQL + Storage)
-- **AI:** Anthropic Claude API (claude-sonnet-4-20250514) with tool_use
-- **Voice In:** Web Speech API (browser-native)
-- **Voice Out:** Elevenlabs TTS API
+- **AI:** Anthropic Claude API (claude-sonnet-4-20250514) with tool_use for `show_slide`
+- **Voice In:** Web Speech API (browser-native, continuous listening in Voice Mode)
+- **Voice Out:** ElevenLabs TTS API (model: `eleven_flash_v2_5`, MP3 streaming)
 - **Deployment:** Vercel
+
+## Current State (as of 2026-03-14)
+
+### What's built and working:
+- **Full DB schema** — 7 tables with RLS, triggers, storage buckets (all live on Supabase)
+- **Auth** — Login/Signup, middleware protecting `/dashboard/*`, auto user creation on signup
+- **All route skeletons** — Landing, Dashboard, Project Detail, Analytics, Pitch Page
+- **Chat API** (`/api/chat`) — Claude streaming with `show_slide` tool + agentic loop + clause-level chunking for low-latency TTS
+- **TTS API** (`/api/tts`) — ElevenLabs Flash v2.5, MP3 streaming, pipelined fetches
+- **Pitch Page** (`/p/[slug]`) — Two modes:
+  - **Text Mode:** Slide display + chat overlay + suggested questions + mic button + TTS playback
+  - **Voice Mode:** Animated orb (idle/listening/speaking states) + continuous listening (no button needed) + slide thumbnail
+- **Speech-optimized prompting** — Claude writes in spoken style (contractions, spelled-out numbers, short sentences)
+- **Test data** — "DesignStudio" project with 7 slides, "Acme Corp" pitch link at `/p/acme-corp`
+
+### What's NOT built yet:
+- AI Interview & System Prompt Generation (seller onboarding)
+- Website Crawling (seller + prospect)
+- Slide Deck Upload & PDF/PPTX → image conversion
+- Prospect Research & auto-personalization
+- Analytics Dashboard (data display)
+- Notifications (Make/N8N webhooks)
+- Calendar embed (Cal.com/Calendly)
+- Conversation persistence to DB
+- Landing Page design
 
 ## Supabase
 - Project ref: `tfbhyjwsmluieawbrlbk`
 - Region: West EU (Ireland)
 - CLI linked, migrations in `supabase/migrations/`
+- 3 migrations applied: foundation schema, public project read policy, recursive RLS fix
 
 ---
 
 ## ⚠ OWNERSHIP RULES — READ BEFORE EDITING
 
-This project is split between two people. **Before touching any file, check which zone it belongs to. Only edit files in your own zone.** If you need something from the other zone, use the shared interfaces below — never reach into the other person's code directly.
+This project is split between two people. **Before touching any file, check which zone it belongs to. Only edit files in your own zone.**
 
 ### Zone A — Lasse: AI & Core Logic
-**Scope:** Everything that makes the AI agent work — from chat API to voice to prospect research.
+**Scope:** Everything that makes the AI agent work.
 
 | Owned directories/files | Purpose |
 |---|---|
-| `src/app/p/` | Prospect-facing pitch page (public) |
-| `src/app/api/chat/` | Claude API streaming endpoint |
-| `src/app/api/crawl/` | Website crawling endpoints |
-| `src/lib/ai/` | Claude integration, system prompt generation, qualification logic |
-| `src/lib/crawl/` | Website crawling & content extraction |
-| `src/lib/voice/` | Web Speech API + Elevenlabs TTS |
-
-**Tasks:**
-- Claude API Integration (Chat, Streaming, Tool Use)
-- `show_slide` tool & slide navigation logic
-- System Prompt Generation (from interview + website crawl)
-- Website Crawling (seller + prospect)
-- Prospect Research & personalization
-- Voice Input/Output
-- Conversation Qualification & Summary
+| `src/app/p/` | Prospect-facing pitch page (public, text + voice mode) |
+| `src/app/api/chat/` | Claude API streaming endpoint with clause chunking |
+| `src/app/api/tts/` | ElevenLabs TTS streaming proxy |
+| `src/app/api/crawl/` | Website crawling endpoints (not yet built) |
+| `src/lib/ai/` | Claude integration, system prompt generation (not yet built) |
+| `src/lib/crawl/` | Website crawling & content extraction (not yet built) |
 
 ### Zone B — Person 2: UI, Dashboard & Infrastructure
-**Scope:** Everything the seller sees and interacts with — dashboard, uploads, analytics, settings.
+**Scope:** Everything the seller sees and interacts with.
 
 | Owned directories/files | Purpose |
 |---|---|
 | `src/app/page.tsx` | Public landing page |
 | `src/app/dashboard/` | All dashboard routes (projects, analytics, settings) |
-| `src/app/api/upload/` | File upload endpoints |
+| `src/app/api/upload/` | File upload endpoints (not yet built) |
 | `src/components/` | All shared UI components |
-| `src/lib/storage/` | Supabase Storage helpers (upload, delete, list) |
-
-**Tasks:**
-- Landing Page design & copy
-- Dashboard UI (project list, project detail, navigation)
-- Slide Deck Upload (PDF/PPTX → images, slide editor, reorder/delete)
-- Pitch Link creation form + preview
-- Analytics Dashboard (conversation logs, qualification overview, slide views)
-- Notifications UI
-- Settings (tone, language, calendar link)
-- Calendar embed (Cal.com/Calendly)
+| `src/lib/storage/` | Supabase Storage helpers (not yet built) |
 
 ### Shared (both zones may read, changes need coordination)
-| Path | Purpose | Rules |
-|---|---|---|
-| `src/lib/supabase/` | Supabase clients & generated types | Don't edit manually — regenerate with `supabase gen types` |
-| `src/middleware.ts` | Auth middleware | Coordinate before changing |
-| `src/app/layout.tsx` | Root layout | Coordinate before changing |
-| `src/app/globals.css` | Global styles | Coordinate before changing |
-| `supabase/migrations/` | DB schema | New migrations require coordination |
+| Path | Purpose |
+|---|---|
+| `src/lib/supabase/` | Supabase clients & generated types — regenerate with `supabase gen types` |
+| `src/middleware.ts` | Auth middleware |
+| `src/app/layout.tsx` | Root layout |
+| `src/app/globals.css` | Global styles |
+| `supabase/migrations/` | DB schema |
 
-### Shared Interfaces (the contract between Zone A and Zone B)
-These are the data formats both zones rely on. **Changing these requires agreement from both sides.**
-
+### Shared Interfaces (contract between zones)
 - **`messages` JSONB:** `{role: "user"|"assistant", content: string, timestamp: string, slide_shown?: number}`
 - **Slide images:** Storage Bucket `slides`, path `{project_id}/{slide_index}.png`
 - **`system_prompt`:** Generated by Zone A, displayed/editable by Zone B in dashboard
@@ -89,6 +94,14 @@ These are the data formats both zones rely on. **Changing these requires agreeme
 7 tables: `users`, `projects`, `documents`, `slides`, `pitch_links`, `conversations`, `notifications`
 2 storage buckets: `slides` (public), `documents` (private)
 All with RLS policies. See migration files for details.
+
+## Key Architecture Decisions
+- **Clause-level chunking** in chat API (not sentence-level) for faster TTS — splits at `, ; : — . ! ?` with minimum 4 words
+- **Pipelined TTS** — next clause fetch starts while current clause plays
+- **ElevenLabs Flash v2.5** — lowest latency model for conversational use
+- **MP3 format** for TTS (PCM caused noise issues)
+- **Web Speech API** for voice input — `continuous: true` in Voice Mode, single-shot in Text Mode
+- **No ElevenLabs Agents** — we keep Claude as the brain, ElevenLabs only for voice output
 
 ## Commands
 ```bash
