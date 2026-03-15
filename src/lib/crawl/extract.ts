@@ -10,7 +10,7 @@ export async function crawlWebsite(url: string): Promise<string> {
     const res = await fetch(url, {
       signal: controller.signal,
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; PitchLinkBot/1.0; +https://pitchlink.io)",
+        "User-Agent": "Mozilla/5.0 (compatible; PingPongBot/1.0; +https://pingpong.io)",
         Accept: "text/html,application/xhtml+xml",
       },
     });

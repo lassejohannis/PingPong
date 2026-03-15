@@ -26,7 +26,7 @@ export function PitchPreview({
           <div className="w-2.5 h-2.5 rounded-full bg-[#333]" />
         </div>
         <div className="flex-1 mx-3 bg-[#1a1a1a] rounded px-3 py-0.5 text-[10px] text-[#444] font-mono">
-          pitchlink.io/p/prospect-name
+          pingpong.io/p/prospect-name
         </div>
       </div>
 

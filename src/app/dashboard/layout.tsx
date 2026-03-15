@@ -25,8 +25,9 @@ export default async function DashboardLayout({
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
       <nav className="border-b border-[#222] px-6 py-3 flex items-center justify-between bg-[#0d0d0d]">
-        <Link href="/dashboard" className="font-bold text-lg text-white tracking-tight">
-          Pitch<span className="text-violet-400">Link</span>
+        <Link href="/dashboard" className="flex items-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <div className="h-8 overflow-hidden flex items-center"><img src="/logo.png" alt="PingPong" className="h-24 translate-y-1" /></div>
         </Link>
         <Link
           href="/dashboard/account"

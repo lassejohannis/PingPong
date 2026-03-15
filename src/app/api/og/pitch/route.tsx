@@ -49,7 +49,7 @@ export async function GET(request: Request) {
             <div style={{ width: "14px", height: "14px", background: "#000", borderRadius: "2px", display: "flex" }} />
           </div>
           <span style={{ color: "#ffffff", fontSize: "18px", fontWeight: 600, opacity: 0.9 }}>
-            PitchLink
+            PingPong
           </span>
         </div>
 

@@ -183,6 +183,15 @@ export default function PitchClient({
                 });
               } else if (data.type === "slide_change") {
                 setCurrentSlide(data.slide_index);
+              } else if (data.type === "error") {
+                const errorMsg = data.error_type === "rate_limit"
+                  ? "The agent is currently busy. Please try again in a moment."
+                  : "Something went wrong. Please try again.";
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  updated[updated.length - 1] = { role: "assistant", content: errorMsg };
+                  return updated;
+                });
               }
             } catch { /* skip malformed */ }
           }

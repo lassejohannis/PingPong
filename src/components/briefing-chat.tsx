@@ -208,6 +208,17 @@ export function BriefingChat({
                   setCheckpointSummary(data.summary);
                   setShowCheckpoint(true);
                   break;
+
+                case "error":
+                  setMessages((prev) => {
+                    const errorMsg = data.error_type === "rate_limit"
+                      ? "The agent is currently busy. Please try again in a moment."
+                      : "Something went wrong. Please try again.";
+                    const updated = [...prev];
+                    updated[updated.length - 1] = { role: "assistant", content: errorMsg };
+                    return updated;
+                  });
+                  break;
               }
             } catch {
               // Skip malformed SSE

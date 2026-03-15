@@ -5,6 +5,8 @@ import type { Json } from "@/lib/supabase/types";
 
 const anthropic = new Anthropic();
 
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -46,6 +48,16 @@ export async function POST(request: Request) {
   if (!fileData) return Response.json({ error: "Failed to download" }, { status: 500 });
 
   const buffer = Buffer.from(await fileData.arrayBuffer());
+
+  // Guard against oversized files that would cause memory issues on serverless
+  const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
+  if (buffer.length > MAX_FILE_SIZE) {
+    return Response.json(
+      { error: `File too large (${Math.round(buffer.length / 1024 / 1024)}MB). Maximum is 25MB.` },
+      { status: 413 }
+    );
+  }
+
   const base64 = buffer.toString("base64");
 
   // Ask Claude to generate metadata for each slide

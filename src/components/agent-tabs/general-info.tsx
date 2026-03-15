@@ -78,7 +78,7 @@ export function GeneralInfo({ projectId, settings, onDirtyChange, onPromptRegene
             id="product_name" type="text"
             value={productName}
             onChange={(e) => setProductName(e.target.value)}
-            placeholder="PitchLink Pro"
+            placeholder="PingPong Pro"
             className="w-full rounded-lg bg-[#0d0d0d] border border-[#333] text-white placeholder:text-[#555] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors"
           />
         </div>

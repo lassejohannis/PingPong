@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import Anthropic from "@anthropic-ai/sdk";
+
+export const maxDuration = 60;
 import {
   AGENT_KNOWLEDGE_QUESTIONS,
   getEmptyKnowledge,
@@ -7,6 +9,7 @@ import {
 } from "@/lib/ai/knowledge-questions";
 
 const client = new Anthropic();
+const MAX_TOOL_ITERATIONS = 15;
 
 const knowledgeUpdateTool: Anthropic.Tool = {
   name: "propose_knowledge_update",
@@ -141,80 +144,95 @@ export async function POST(request: Request) {
 
       let currentMessages = [...messages];
 
-      // Agentic loop
-      while (true) {
-        const response = client.messages.stream({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 2000,
-          system: systemPrompt,
-          tools: [knowledgeUpdateTool, checkpointTool],
-          messages: currentMessages,
+      try {
+        // Agentic loop
+        let iterations = 0;
+        while (iterations < MAX_TOOL_ITERATIONS) {
+          iterations++;
+          const response = client.messages.stream({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 2000,
+            system: systemPrompt,
+            tools: [knowledgeUpdateTool, checkpointTool],
+            messages: currentMessages,
+          });
+
+          const toolUseBlocks: Anthropic.ToolUseBlock[] = [];
+
+          for await (const event of response) {
+            if (
+              event.type === "content_block_delta" &&
+              event.delta.type === "text_delta"
+            ) {
+              send({ type: "text_delta", text: event.delta.text });
+            }
+          }
+
+          const finalMessage = await response.finalMessage();
+
+          for (const block of finalMessage.content) {
+            if (block.type === "tool_use") {
+              toolUseBlocks.push(block);
+            }
+          }
+
+          if (toolUseBlocks.length === 0) {
+            send({ type: "done" });
+            break;
+          }
+
+          const toolResults: Anthropic.ToolResultBlockParam[] = [];
+          for (const toolUse of toolUseBlocks) {
+            if (toolUse.name === "propose_knowledge_update") {
+              const input = toolUse.input as {
+                question_id: string;
+                new_answer: string;
+                reason: string;
+              };
+              send({
+                type: "knowledge_update",
+                questionId: input.question_id,
+                newAnswer: input.new_answer,
+                reason: input.reason,
+              });
+              toolResults.push({
+                type: "tool_result",
+                tool_use_id: toolUse.id,
+                content: "Update noted. Continue the conversation.",
+              });
+            }
+
+            if (toolUse.name === "checkpoint") {
+              const input = toolUse.input as { summary: string };
+              send({
+                type: "checkpoint",
+                summary: input.summary,
+              });
+              toolResults.push({
+                type: "tool_result",
+                tool_use_id: toolUse.id,
+                content: "Checkpoint shown to the user. They will decide whether to save. Continue the conversation.",
+              });
+            }
+          }
+
+          currentMessages = [
+            ...currentMessages,
+            { role: "assistant", content: finalMessage.content },
+            { role: "user", content: toolResults },
+          ];
+        }
+      } catch (err: unknown) {
+        console.error("Briefing chat streaming error:", err);
+        const apiErr = err as { status?: number; error?: { type?: string } };
+        const isRateLimit = apiErr.status === 429 || apiErr.error?.type === "rate_limit_error";
+        send({
+          type: "error",
+          error_type: isRateLimit ? "rate_limit" : "server_error",
+          message: isRateLimit
+            ? "The agent is currently busy. Please try again in a moment."
+            : "Something went wrong. Please try again.",
         });
-
-        const toolUseBlocks: Anthropic.ToolUseBlock[] = [];
-
-        for await (const event of response) {
-          if (
-            event.type === "content_block_delta" &&
-            event.delta.type === "text_delta"
-          ) {
-            send({ type: "text_delta", text: event.delta.text });
-          }
-        }
-
-        const finalMessage = await response.finalMessage();
-
-        for (const block of finalMessage.content) {
-          if (block.type === "tool_use") {
-            toolUseBlocks.push(block);
-          }
-        }
-
-        if (toolUseBlocks.length === 0) {
-          send({ type: "done" });
-          break;
-        }
-
-        const toolResults: Anthropic.ToolResultBlockParam[] = [];
-        for (const toolUse of toolUseBlocks) {
-          if (toolUse.name === "propose_knowledge_update") {
-            const input = toolUse.input as {
-              question_id: string;
-              new_answer: string;
-              reason: string;
-            };
-            send({
-              type: "knowledge_update",
-              questionId: input.question_id,
-              newAnswer: input.new_answer,
-              reason: input.reason,
-            });
-            toolResults.push({
-              type: "tool_result",
-              tool_use_id: toolUse.id,
-              content: "Update noted. Continue the conversation.",
-            });
-          }
-
-          if (toolUse.name === "checkpoint") {
-            const input = toolUse.input as { summary: string };
-            send({
-              type: "checkpoint",
-              summary: input.summary,
-            });
-            toolResults.push({
-              type: "tool_result",
-              tool_use_id: toolUse.id,
-              content: "Checkpoint shown to the user. They will decide whether to save. Continue the conversation.",
-            });
-          }
-        }
-
-        currentMessages = [
-          ...currentMessages,
-          { role: "assistant", content: finalMessage.content },
-          { role: "user", content: toolResults },
-        ];
       }
 
       controller.close();

@@ -1,7 +1,10 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest } from "next/server";
 
+export const maxDuration = 60;
+
 const client = new Anthropic();
+const MAX_TOOL_ITERATIONS = 15;
 
 const showSlideTool: Anthropic.Tool = {
   name: "show_slide",
@@ -82,103 +85,118 @@ Your responses will be read aloud via text-to-speech. Write in a natural, conver
 
       let currentMessages = [...messages];
 
-      // Agentic loop: keep going until Claude stops calling tools
-      while (true) {
-        const response = client.messages.stream({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 4096,
-          system: fullSystemPrompt,
-          tools: [showSlideTool],
-          messages: currentMessages,
-        });
+      try {
+        // Agentic loop: keep going until Claude stops calling tools
+        let iterations = 0;
+        while (iterations < MAX_TOOL_ITERATIONS) {
+          iterations++;
+          const response = client.messages.stream({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 4096,
+            system: fullSystemPrompt,
+            tools: [showSlideTool],
+            messages: currentMessages,
+          });
 
-        const toolUseBlocks: Anthropic.ToolUseBlock[] = [];
-        let clauseBuffer = "";
+          const toolUseBlocks: Anthropic.ToolUseBlock[] = [];
+          let clauseBuffer = "";
 
-        for await (const event of response) {
-          if (
-            event.type === "content_block_start" &&
-            event.content_block.type === "text"
-          ) {
-            send({ type: "text_start" });
-            clauseBuffer = "";
-          }
+          for await (const event of response) {
+            if (
+              event.type === "content_block_start" &&
+              event.content_block.type === "text"
+            ) {
+              send({ type: "text_start" });
+              clauseBuffer = "";
+            }
 
-          if (
-            event.type === "content_block_delta" &&
-            event.delta.type === "text_delta"
-          ) {
-            send({ type: "text_delta", text: event.delta.text });
+            if (
+              event.type === "content_block_delta" &&
+              event.delta.type === "text_delta"
+            ) {
+              send({ type: "text_delta", text: event.delta.text });
 
-            // Track clause boundaries for low-latency TTS
-            clauseBuffer += event.delta.text;
-            const clauseEnd = clauseBuffer.match(/[,;:—.!?]\s/);
-            if (clauseEnd) {
-              const idx = clauseEnd.index! + 1;
-              const clause = clauseBuffer.slice(0, idx).trim();
-              // Minimum 4 words for natural-sounding TTS
-              if (clause.split(/\s+/).length >= 4) {
-                send({ type: "clause_end", text: clause });
-                clauseBuffer = clauseBuffer.slice(idx);
+              // Track clause boundaries for low-latency TTS
+              clauseBuffer += event.delta.text;
+              const clauseEnd = clauseBuffer.match(/[,;:—.!?]\s/);
+              if (clauseEnd) {
+                const idx = clauseEnd.index! + 1;
+                const clause = clauseBuffer.slice(0, idx).trim();
+                // Minimum 4 words for natural-sounding TTS
+                if (clause.split(/\s+/).length >= 4) {
+                  send({ type: "clause_end", text: clause });
+                  clauseBuffer = clauseBuffer.slice(idx);
+                }
               }
             }
-          }
 
-          if (event.type === "content_block_stop") {
-            // Flush remaining text as final clause
-            const remaining = clauseBuffer.trim();
-            if (remaining.length > 3) {
-              send({ type: "clause_end", text: remaining });
+            if (event.type === "content_block_stop") {
+              // Flush remaining text as final clause
+              const remaining = clauseBuffer.trim();
+              if (remaining.length > 3) {
+                send({ type: "clause_end", text: remaining });
+              }
+              clauseBuffer = "";
             }
-            clauseBuffer = "";
           }
-        }
 
-        const finalMessage = await response.finalMessage();
+          const finalMessage = await response.finalMessage();
 
-        // Collect any tool use blocks
-        for (const block of finalMessage.content) {
-          if (block.type === "tool_use") {
-            toolUseBlocks.push(block);
+          // Collect any tool use blocks
+          for (const block of finalMessage.content) {
+            if (block.type === "tool_use") {
+              toolUseBlocks.push(block);
+            }
           }
-        }
 
-        // If no tools were called, we're done
-        if (toolUseBlocks.length === 0) {
-          send({ type: "done", stop_reason: finalMessage.stop_reason });
-          break;
-        }
-
-        // Process tool calls
-        const toolResults: Anthropic.ToolResultBlockParam[] = [];
-        for (const toolUse of toolUseBlocks) {
-          if (toolUse.name === "show_slide") {
-            const input = toolUse.input as {
-              slide_index: number;
-              reason?: string;
-            };
-
-            // Send slide change event to the frontend
-            send({
-              type: "slide_change",
-              slide_index: input.slide_index,
-              reason: input.reason,
-            });
-
-            toolResults.push({
-              type: "tool_result",
-              tool_use_id: toolUse.id,
-              content: `Slide ${input.slide_index} is now being displayed to the prospect.`,
-            });
+          // If no tools were called, we're done
+          if (toolUseBlocks.length === 0) {
+            send({ type: "done", stop_reason: finalMessage.stop_reason });
+            break;
           }
-        }
 
-        // Continue the conversation with tool results
-        currentMessages = [
-          ...currentMessages,
-          { role: "assistant", content: finalMessage.content },
-          { role: "user", content: toolResults },
-        ];
+          // Process tool calls
+          const toolResults: Anthropic.ToolResultBlockParam[] = [];
+          for (const toolUse of toolUseBlocks) {
+            if (toolUse.name === "show_slide") {
+              const input = toolUse.input as {
+                slide_index: number;
+                reason?: string;
+              };
+
+              // Send slide change event to the frontend
+              send({
+                type: "slide_change",
+                slide_index: input.slide_index,
+                reason: input.reason,
+              });
+
+              toolResults.push({
+                type: "tool_result",
+                tool_use_id: toolUse.id,
+                content: `Slide ${input.slide_index} is now being displayed to the prospect.`,
+              });
+            }
+          }
+
+          // Continue the conversation with tool results
+          currentMessages = [
+            ...currentMessages,
+            { role: "assistant", content: finalMessage.content },
+            { role: "user", content: toolResults },
+          ];
+        }
+      } catch (err: unknown) {
+        console.error("Chat streaming error:", err);
+        const apiErr = err as { status?: number; error?: { type?: string }; headers?: Record<string, string> };
+        const isRateLimit = apiErr.status === 429 || apiErr.error?.type === "rate_limit_error";
+        send({
+          type: "error",
+          error_type: isRateLimit ? "rate_limit" : "server_error",
+          message: isRateLimit
+            ? "The agent is currently busy. Please try again in a moment."
+            : "Something went wrong. Please try again.",
+        });
       }
 
       controller.close();

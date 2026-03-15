@@ -3,6 +3,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { crawlWebsite } from "@/lib/crawl/extract";
 import { generateProspectProfile } from "@/lib/ai/prospect-research";
 
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   const supabase = await createClient();
   const {

@@ -27,6 +27,12 @@ export async function extractDocumentContent(
 
   const buffer = Buffer.from(await data.arrayBuffer());
 
+  // Guard against oversized files that would cause memory issues on serverless
+  const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
+  if (buffer.length > MAX_FILE_SIZE) {
+    throw new Error(`File too large (${Math.round(buffer.length / 1024 / 1024)}MB). Maximum is 25MB.`);
+  }
+
   if (fileType === "application/pdf" || fileUrl.endsWith(".pdf")) {
     // Try text extraction first
     try {

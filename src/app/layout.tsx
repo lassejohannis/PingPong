@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PitchLink",
+  title: "PingPong",
   description: "AI-powered personalized pitch pages for sales teams",
 };
 

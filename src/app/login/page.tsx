@@ -41,8 +41,9 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a]">
       <div className="w-full max-w-sm space-y-6 px-6">
-        <div className="text-center space-y-1">
-          <h1 className="text-2xl font-bold text-white">PitchLink</h1>
+        <div className="text-center space-y-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <div className="h-12 overflow-hidden flex items-center mx-auto w-fit"><img src="/logo.png" alt="PingPong" className="h-28 translate-y-1" /></div>
           <p className="text-sm text-[#888]">
             {isSignUp ? "Create your account" : "Sign in to your account"}
           </p>

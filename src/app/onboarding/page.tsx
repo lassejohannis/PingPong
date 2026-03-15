@@ -27,6 +27,8 @@ export default async function OnboardingPage() {
     <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a]">
       <div className="w-full max-w-lg space-y-8 px-6 py-12">
         <div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <div className="h-10 overflow-hidden flex items-center mb-6"><img src="/logo.png" alt="PingPong" className="h-24 translate-y-1" /></div>
           <h1 className="text-2xl font-bold text-white">Set up your company profile</h1>
           <p className="text-sm text-[#888] mt-1">
             The AI agent uses this information when pitching to your prospects.

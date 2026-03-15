@@ -13,6 +13,10 @@ import {
 
 const anthropic = new Anthropic();
 
+export const maxDuration = 60;
+
+const MAX_FILE_SIZE_MB = 25;
+
 export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

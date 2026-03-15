@@ -7,7 +7,7 @@ PitchLink lets salespeople create personalized, AI-powered pitch pages for prosp
 - **Framework:** Next.js 16 (App Router) + React 19 + TypeScript
 - **Styling:** Tailwind CSS v4
 - **Database:** Supabase (PostgreSQL + Storage + RLS)
-- **AI:** Anthropic Claude API (claude-sonnet-4-20250514) — tool_use, vision (PDF reading), prompt engineering
+- **AI:** Anthropic Claude API — tool_use, vision (PDF reading), prompt engineering. Most endpoints use `claude-sonnet-4-20250514`; research/prospect, research/report, and email/generate use `claude-sonnet-4-6`.
 - **Voice:** ElevenLabs Conversational AI Agent (`@elevenlabs/react` SDK, Flash v2.5)
 - **PDF Extraction:** `unpdf` (pure JS) with Claude Vision fallback for image-heavy PDFs
 - **PDF Rendering:** `pdfjs-dist` (client-side PDF → PNG slide conversion)
@@ -26,6 +26,7 @@ PitchLink lets salespeople create personalized, AI-powered pitch pages for prosp
 - **Mode switching** with conversation history handoff
 - **Dual lookup:** Personalized pitch links (pitch_links table) + generic project links (projects.slug fallback)
 - **Prospect context** injected into system prompt for both modes
+- **Conversation auto-save** after session end via `/api/conversations/save` (messages + slides viewed)
 
 **Agent Tuning (`/dashboard/[slug]/product`) — 5 Sub-Tabs:**
 1. **General Info** — Product Name, Website, Description. Save triggers system prompt regeneration.
@@ -64,11 +65,11 @@ PitchLink lets salespeople create personalized, AI-powered pitch pages for prosp
 - **Slide Metadata** (`/api/project/slides/generate-metadata`) — Claude Vision generates title + description per slide
 
 **Dashboard (Zone B):**
-- Projects list, create new project (Campaign Name + Product Name)
-- Leads manager with CSV import, lead detail with auto-research
-- Email campaign builder with Claude-generated templates + Gmail sending
+- Projects list with logo display, create/delete projects
+- Leads manager with CSV import, lead detail with auto-research, prospect logo upload, conversation history with qualification (HOT/WARM/NOT_A_FIT), report generation, email embed for Gmail
+- Email campaign builder with Claude-generated templates, template variables (`{{prospect_name}}`, `{{contact_name}}`, `{{pitch_link_url}}`, `{{og_image_url}}`), tone adjustment (More Salesy/Shorter/Formal/Casual/Longer), preview modes (rendered vs HTML), Gmail sending with send tracking
 - Analytics with conversation table + report generation
-- Account settings
+- Account settings + onboarding flow
 - Pitch page editor (headline, opening message, suggested questions, calendar link, logo)
 - Dashboard tabs: Agent Tuning → Pitch Page → Mailing Template → Leads → Analytics
 
@@ -83,13 +84,12 @@ PitchLink lets salespeople create personalized, AI-powered pitch pages for prosp
 - Notifications (Make/N8N webhooks)
 - Calendar embed UI (Cal.com/Calendly — `calendar_link` settings field exists but not wired to pitch page)
 - Landing page design
-- Conversation persistence to DB (table exists, not fully integrated)
 
 ## Supabase
 - Project ref: `tfbhyjwsmluieawbrlbk`
 - Region: West EU (Ireland)
 - CLI linked, migrations in `supabase/migrations/`
-- 5 migrations applied: foundation schema, public project read policy, recursive RLS fix, contact_email field, project visibility fix (auth.uid() IS NULL restriction)
+- 6 migrations applied: foundation schema, public project read policy, recursive RLS fix, contact_email field, name fields for pitch_links (first_name + last_name), project visibility fix (auth.uid() IS NULL restriction)
 
 ---
 
@@ -112,6 +112,7 @@ This project is split between two people. **Before touching any file, check whic
 | `src/app/api/project/apply-knowledge/` | Apply knowledge changes |
 | `src/app/api/project/regenerate-prompt/` | On-demand prompt regeneration |
 | `src/app/api/project/slides/` | Slide image upload + metadata generation |
+| `src/app/api/conversations/save/` | Save conversation to DB after session |
 | `src/lib/ai/` | Knowledge system, prompt generation, document extraction |
 | `src/lib/crawl/` | Website crawling & content extraction |
 
@@ -128,6 +129,8 @@ This project is split between two people. **Before touching any file, check whic
 | `src/app/api/project/logo/` | Project logo upload |
 | `src/app/api/project/settings/` | Settings JSONB updates |
 | `src/app/api/project/documents/` | Document upload/delete/download/set-presentation |
+| `src/app/api/project/delete/` | Delete project |
+| `src/app/api/lead/logo/` | Upload lead-specific prospect logo |
 
 ### Shared Components (Zone A built, both zones use)
 | Component | Purpose |
@@ -142,6 +145,16 @@ This project is split between two people. **Before touching any file, check whic
 | `src/components/pitch-page-editor.tsx` | Pitch page settings (headline, opening, suggested questions) |
 | `src/components/pitch-preview.tsx` | Static pitch page preview |
 | `src/components/suggested-questions-editor.tsx` | Add/remove/reorder suggested questions |
+| `src/components/pitch-chat.tsx` | Text-chat overlay for pitch page |
+| `src/components/prospect-research.tsx` | Auto-research trigger with status feedback |
+| `src/components/copy-button.tsx` | Generic copy-to-clipboard button |
+| `src/components/csv-import.tsx` | CSV lead import with column mapping |
+| `src/components/delete-project-button.tsx` | Project deletion with confirmation |
+| `src/components/email-embed-button.tsx` | Gmail HTML embed with OG image |
+| `src/components/generate-report-button.tsx` | Conversation report generation trigger |
+| `src/components/lead-copy-button.tsx` | Copy lead pitch link |
+| `src/components/lead-logo-upload.tsx` | Lead-specific logo upload |
+| `src/components/logo-upload.tsx` | Project logo upload |
 | `src/components/ui/voice-powered-orb.tsx` | WebGL animated orb (OGL shader, mic + external intensity) |
 | `src/components/ui/button.tsx` | Radix UI button with variants |
 
@@ -159,6 +172,9 @@ This project is split between two people. **Before touching any file, check whic
 
 ## Database
 7 tables: `users`, `projects`, `documents`, `slides`, `pitch_links`, `conversations`, `notifications`
+
+**`pitch_links` notable columns:** `slug`, `contact_email`, `first_name`, `last_name`, `prospect_logo`, `prospect_context`, `headline`
+
 2 storage buckets: `slides` (public), `documents` (private)
 All with RLS policies. See migration files for details.
 
@@ -176,6 +192,8 @@ All with RLS policies. See migration files for details.
   "response_length": "short|medium|detailed",
   "custom_rules": "string|null",
   "logo_url": "string|null",
+  "default_headline": "string|null",
+  "opening_message": "string|null",
   "calendar_link": "string|null",
   "presentation_doc_id": "string|null",
   "last_processed_presentation_id": "string|null",
@@ -208,6 +226,9 @@ All with RLS policies. See migration files for details.
 | `/api/project/slides/generate-metadata` | POST | A | Claude Vision slide titles + descriptions |
 | `/api/research/prospect` | POST | A | Crawl + profile prospect |
 | `/api/research/report` | POST | A | Analyze conversation post-call |
+| `/api/conversations/save` | POST | A | Save conversation messages + slides to DB |
+| `/api/project/delete` | POST | B | Delete project with ownership check |
+| `/api/lead/logo` | POST | B | Upload lead-specific prospect logo |
 | `/api/project/settings` | POST | Shared | Update settings JSONB |
 | `/api/project/documents` | POST/DELETE | Shared | Upload/delete documents |
 | `/api/project/documents/set-presentation` | POST | Shared | Mark doc as presentation |
@@ -232,6 +253,7 @@ All with RLS policies. See migration files for details.
 - **Tab Guards** — Unsaved changes modal overlay when switching tabs, processing blocks all tab switches
 - **WebGL VoicePoweredOrb** — OGL shader-based animated orb that responds to mic audio levels (`enableVoiceControl`) + external intensity (`externalIntensity` for agent speaking). Hue-shifted by state (speaking=280/pink, listening=120/green, idle=0/purple-blue).
 - **`createAdminClient`** — Service role Supabase client for storage + DB operations bypassing RLS. Used in public-facing routes (pitch page, signed-url) where user may not be authenticated.
+- **Speech Output Guidelines** — Both text chat and voice prompts include speech formatting rules (use contractions, short sentences, no markdown/bullets, spell out numbers and abbreviations) for natural-sounding output.
 - **Defense-in-Depth RLS** — Public project read policy restricted to `auth.uid() IS NULL`. Dashboard queries also add explicit `user_id` filter.
 
 ## Commands
