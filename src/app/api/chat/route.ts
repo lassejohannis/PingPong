@@ -28,10 +28,12 @@ export async function POST(request: NextRequest) {
   const {
     messages,
     systemPrompt,
+    prospectContext,
     slides,
   }: {
     messages: Anthropic.MessageParam[];
     systemPrompt: string;
+    prospectContext?: string | null;
     slides: { index: number; title: string; description: string }[];
   } = await request.json();
 
@@ -66,7 +68,8 @@ Your responses will be read aloud via text-to-speech. Write in a natural, conver
 - Spell out abbreviations (e.g. "U X audit" not "UX audit", "S A A S" not "SaaS")
 - Keep sentences short and punchy — long sentences sound unnatural when spoken
 - Sound warm and enthusiastic, like you're having a real conversation, not reading a script
-- Avoid bullet points, markdown formatting, or anything visual — this is pure audio`;
+- Avoid bullet points, markdown formatting, or anything visual — this is pure audio`
+  + (prospectContext ? `\n\n## Prospect Intelligence\n${prospectContext}` : "");
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({

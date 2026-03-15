@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useConversation } from "@elevenlabs/react";
+import { VoicePoweredOrb } from "@/components/ui/voice-powered-orb";
 
 interface Slide {
   index: number;
@@ -18,6 +19,7 @@ interface Message {
 interface PitchClientProps {
   slug: string;
   systemPrompt: string;
+  prospectContext: string | null;
   slides: Slide[];
   prospectName: string;
   prospectLogo: string | null;
@@ -29,6 +31,7 @@ interface PitchClientProps {
 export default function PitchClient({
   slug,
   systemPrompt,
+  prospectContext,
   slides,
   prospectName,
   prospectLogo,
@@ -101,7 +104,15 @@ export default function PitchClient({
     setIsVoiceConnecting(true);
     setMode("voice");
     try {
-      const res = await fetch(`/api/elevenlabs/signed-url?slug=${encodeURIComponent(slug)}`);
+      const res = await fetch("/api/elevenlabs/signed-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slug,
+          prospectContext,
+          conversationHistory: messages,
+        }),
+      });
       if (!res.ok) throw new Error("Failed to get signed URL");
       const { signedUrl, overrides } = await res.json();
 
@@ -147,6 +158,7 @@ export default function PitchClient({
           body: JSON.stringify({
             messages: apiMessages,
             systemPrompt,
+            prospectContext,
             slides: slides.map((s) => ({
               index: s.index,
               title: s.title,
@@ -240,32 +252,12 @@ export default function PitchClient({
 
         <main className="flex-1 flex flex-col items-center justify-center relative">
           {/* Animated orb */}
-          <div className="relative flex items-center justify-center">
-            <div
-              className={`w-48 h-48 rounded-full transition-all duration-500 ${
-                orbState === "speaking"
-                  ? "bg-gradient-to-br from-blue-500 to-purple-600 shadow-[0_0_80px_rgba(99,102,241,0.5)]"
-                  : orbState === "listening"
-                  ? "bg-gradient-to-br from-green-400 to-emerald-600 shadow-[0_0_60px_rgba(52,211,153,0.4)]"
-                  : "bg-gradient-to-br from-white/20 to-white/5 shadow-[0_0_40px_rgba(255,255,255,0.1)]"
-              }`}
-              style={{
-                animation:
-                  orbState === "speaking"
-                    ? "orbPulse 1s ease-in-out infinite"
-                    : orbState === "listening"
-                    ? "orbPulse 2s ease-in-out infinite"
-                    : "orbPulse 4s ease-in-out infinite",
-              }}
-            />
-            <div
-              className={`absolute w-32 h-32 rounded-full blur-xl transition-all duration-500 ${
-                orbState === "speaking"
-                  ? "bg-blue-400/40"
-                  : orbState === "listening"
-                  ? "bg-green-400/30"
-                  : "bg-white/10"
-              }`}
+          <div className="w-48 h-48">
+            <VoicePoweredOrb
+              enableVoiceControl={orbState !== "idle"}
+              externalIntensity={orbState === "speaking" ? 0.4 : orbState === "listening" ? 0.08 : 0}
+              hue={orbState === "speaking" ? 280 : orbState === "listening" ? 120 : 0}
+              className="rounded-full overflow-hidden"
             />
           </div>
 
@@ -312,12 +304,6 @@ export default function PitchClient({
           )}
         </main>
 
-        <style jsx>{`
-          @keyframes orbPulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.08); }
-          }
-        `}</style>
       </div>
     );
   }

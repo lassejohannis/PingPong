@@ -33,12 +33,13 @@ export default async function ProjectLayout({
         <span className="text-white font-medium">{project.company_name}</span>
       </div>
 
-      {/* Tab nav — order: Leads → Product → Campaign → Analytics */}
+      {/* Tab nav */}
       <nav className="flex gap-1 border-b border-[#1a1a1a] pb-0">
         {[
+          { label: "Agent Tuning", href: `/dashboard/${projectSlug}/product` },
+          { label: "Pitch Page", href: `/dashboard/${projectSlug}/pitch-page` },
+          { label: "Mailing Template", href: `/dashboard/${projectSlug}/campaign` },
           { label: "Leads", href: `/dashboard/${projectSlug}` },
-          { label: "Product", href: `/dashboard/${projectSlug}/product` },
-          { label: "Campaign", href: `/dashboard/${projectSlug}/campaign` },
           { label: "Analytics", href: `/dashboard/${projectSlug}/analytics` },
         ].map((tab) => (
           <Link

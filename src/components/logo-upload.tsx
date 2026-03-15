@@ -5,9 +5,10 @@ import { useRef, useState } from "react";
 type Props = {
   projectId: string;
   currentLogoUrl: string | null;
+  onLogoChange?: (url: string) => void;
 };
 
-export function LogoUpload({ projectId, currentLogoUrl }: Props) {
+export function LogoUpload({ projectId, currentLogoUrl, onLogoChange }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(currentLogoUrl);
   const [uploading, setUploading] = useState(false);
@@ -28,6 +29,7 @@ export function LogoUpload({ projectId, currentLogoUrl }: Props) {
       setError(data.error ?? "Upload failed");
     } else {
       setPreview(data.logoUrl);
+      onLogoChange?.(data.logoUrl);
     }
     setUploading(false);
   }

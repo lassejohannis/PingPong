@@ -6,42 +6,90 @@ PitchLink lets salespeople create personalized, AI-powered pitch pages for prosp
 ## Tech Stack
 - **Framework:** Next.js 16 (App Router) + React 19 + TypeScript
 - **Styling:** Tailwind CSS v4
-- **Database:** Supabase (PostgreSQL + Storage)
-- **AI:** Anthropic Claude API (claude-sonnet-4-20250514) with tool_use for `show_slide`
-- **Voice In:** Web Speech API (browser-native, continuous listening in Voice Mode)
-- **Voice Out:** ElevenLabs TTS API (model: `eleven_flash_v2_5`, MP3 streaming)
+- **Database:** Supabase (PostgreSQL + Storage + RLS)
+- **AI:** Anthropic Claude API (claude-sonnet-4-20250514) — tool_use, vision (PDF reading), prompt engineering
+- **Voice:** ElevenLabs Conversational AI Agent (`@elevenlabs/react` SDK, Flash v2.5)
+- **PDF Extraction:** `unpdf` (pure JS) with Claude Vision fallback for image-heavy PDFs
+- **PDF Rendering:** `pdfjs-dist` (client-side PDF → PNG slide conversion)
+- **WebGL:** `ogl` (VoicePoweredOrb shader animation)
+- **UI Primitives:** `@radix-ui/react-slot`, `class-variance-authority`
+- **Email:** Gmail API v1 via OAuth 2.0 (`googleapis`)
 - **Deployment:** Vercel
 
-## Current State (as of 2026-03-14)
+## Current State (as of 2026-03-15)
 
 ### What's built and working:
-- **Full DB schema** — 7 tables with RLS, triggers, storage buckets (all live on Supabase)
-- **Auth** — Login/Signup, middleware protecting `/dashboard/*`, auto user creation on signup
-- **All route skeletons** — Landing, Dashboard, Project Detail, Analytics, Pitch Page
-- **Chat API** (`/api/chat`) — Claude streaming with `show_slide` tool + agentic loop + clause-level chunking for low-latency TTS
-- **TTS API** (`/api/tts`) — ElevenLabs Flash v2.5, MP3 streaming, pipelined fetches
-- **Pitch Page** (`/p/[slug]`) — Two modes:
-  - **Text Mode:** Slide display + chat overlay + suggested questions + mic button + TTS playback
-  - **Voice Mode:** Animated orb (idle/listening/speaking states) + continuous listening (no button needed) + slide thumbnail
-- **Speech-optimized prompting** — Claude writes in spoken style (contractions, spelled-out numbers, short sentences)
-- **Test data** — "DesignStudio" project with 7 slides, "Acme Corp" pitch link at `/p/acme-corp`
+
+**Pitch Page (`/p/[slug]`):**
+- **Text Mode:** Slide display + chat overlay + suggested questions + streaming Claude responses
+- **Voice Mode:** ElevenLabs Conversational AI with WebGL VoicePoweredOrb (reacts to mic input + agent speaking, hue shifts by state) + `show_slide` client tool + auto language detection
+- **Mode switching** with conversation history handoff
+- **Dual lookup:** Personalized pitch links (pitch_links table) + generic project links (projects.slug fallback)
+- **Prospect context** injected into system prompt for both modes
+
+**Agent Tuning (`/dashboard/[slug]/product`) — 5 Sub-Tabs:**
+1. **General Info** — Product Name, Website, Description. Save triggers system prompt regeneration.
+2. **Agent Behaviour** — Tone, Aggressiveness (1-5 slider), Pricing Strategy, CTA Type, Response Length, Custom Rules. Save triggers prompt regeneration.
+3. **Documents** — Drag & Drop upload (PDF/PPTX/DOCX/TXT), document list with delete + presentation checkbox. "Process Documents" button with SSE progress bar (creeping animation + rotating status texts). Delete modal with knowledge decision ("forget" vs "keep"). Claude Vision for image-heavy PDFs. PDF → slide image conversion pipeline (pdfjs-dist renders pages client-side, uploads PNGs, Claude Vision generates slide metadata).
+4. **Knowledge** — 12 standard questions + custom questions, quality scores (empty/basic/good/excellent), progress bar, system prompt preview. Badges: "From briefing", "Needs review". Add/delete custom questions.
+5. **Briefing** — Interview mode (AI asks questions) + Test mode (seller tests as prospect). **Text and Voice input modes** (toggle between keyboard and microphone). Voice mode uses WebGL VoicePoweredOrb with `propose_knowledge_update` client tool. Checkpoint system with individual accept/reject per change. Mode switch guards (save/discard pending changes). Chat blocked during checkpoint.
+
+**Slide Pipeline:**
+- PDF marked as "Presentation" → Process Documents triggers client-side rendering via `pdfjs-dist`
+- Each page rendered on canvas (1280px width) → PNG uploaded to Supabase Storage (`slides/` bucket)
+- Claude Vision analyzes full PDF and generates title + description per slide
+- Results stored in `slides` table with `image_url`, `title`, `description`
+- `settings.last_processed_presentation_id` tracks which doc was last processed
+- Blocked by Anthropic API rate limits on free tier (works on paid tier)
+
+**Knowledge System:**
+- 12 standard questions across 4 categories (Product, Audience, Sales, Company)
+- Custom questions stored in `projects.settings.custom_questions`
+- Quality scoring: empty → basic → good → excellent (weighted 0/33/66/100%)
+- Source tracking: `sourceType` = "document" | "briefing" | "manual"
+- Briefing entries protected from doc-processing overwrite (only supplemented)
+- `needsReview` flag when source document is deleted with "forget knowledge"
+- System prompt auto-generated by Claude from knowledge + all behaviour settings
+
+**AI & Chat:**
+- **Chat API** (`/api/chat`) — Claude SSE streaming with `show_slide` tool + agentic loop + clause-level chunking
+- **ElevenLabs Signed URL** (`/api/elevenlabs/signed-url`) — Session URL with runtime overrides (uses `createAdminClient` for public access)
+- **Process Docs** (`/api/project/process-docs`) — SSE streaming, Claude Vision for PDFs, quality scoring, briefing protection
+- **Briefing Chat** (`/api/project/briefing-chat`) — Interview/Test modes with `propose_knowledge_update` + `checkpoint` tools
+- **Briefing Voice** (`/api/project/briefing-voice`) — ElevenLabs signed URL with voice-optimized prompts, speech guidelines, question ID list for `propose_knowledge_update` client tool
+- **Apply Knowledge** (`/api/project/apply-knowledge`) — Apply checkpoint changes, regenerate prompt
+- **Regenerate Prompt** (`/api/project/regenerate-prompt`) — On-demand prompt regeneration from settings + knowledge
+- **Prospect Research** (`/api/research/prospect`) — Website crawl + Claude profiling
+- **Slide Upload** (`/api/project/slides/upload`) — Upload PNG slide images to Supabase Storage
+- **Slide Metadata** (`/api/project/slides/generate-metadata`) — Claude Vision generates title + description per slide
+
+**Dashboard (Zone B):**
+- Projects list, create new project (Campaign Name + Product Name)
+- Leads manager with CSV import, lead detail with auto-research
+- Email campaign builder with Claude-generated templates + Gmail sending
+- Analytics with conversation table + report generation
+- Account settings
+- Pitch page editor (headline, opening message, suggested questions, calendar link, logo)
+- Dashboard tabs: Agent Tuning → Pitch Page → Mailing Template → Leads → Analytics
+
+**Auth & Infrastructure:**
+- Login/Signup via Supabase + Gmail OAuth for email sending
+- Middleware protecting `/dashboard/*`
+- Auto user creation on signup (DB trigger)
+- OG image generation for pitch link social sharing
+- RLS visibility fix: authenticated users only see own projects (public read restricted to `auth.uid() IS NULL`)
 
 ### What's NOT built yet:
-- AI Interview & System Prompt Generation (seller onboarding)
-- Website Crawling (seller + prospect)
-- Slide Deck Upload & PDF/PPTX → image conversion
-- Prospect Research & auto-personalization
-- Analytics Dashboard (data display)
 - Notifications (Make/N8N webhooks)
-- Calendar embed (Cal.com/Calendly)
-- Conversation persistence to DB
-- Landing Page design
+- Calendar embed UI (Cal.com/Calendly — `calendar_link` settings field exists but not wired to pitch page)
+- Landing page design
+- Conversation persistence to DB (table exists, not fully integrated)
 
 ## Supabase
 - Project ref: `tfbhyjwsmluieawbrlbk`
 - Region: West EU (Ireland)
 - CLI linked, migrations in `supabase/migrations/`
-- 3 migrations applied: foundation schema, public project read policy, recursive RLS fix
+- 5 migrations applied: foundation schema, public project read policy, recursive RLS fix, contact_email field, project visibility fix (auth.uid() IS NULL restriction)
 
 ---
 
@@ -54,12 +102,18 @@ This project is split between two people. **Before touching any file, check whic
 
 | Owned directories/files | Purpose |
 |---|---|
-| `src/app/p/` | Prospect-facing pitch page (public, text + voice mode) |
-| `src/app/api/chat/` | Claude API streaming endpoint with clause chunking |
-| `src/app/api/tts/` | ElevenLabs TTS streaming proxy |
-| `src/app/api/crawl/` | Website crawling endpoints (not yet built) |
-| `src/lib/ai/` | Claude integration, system prompt generation (not yet built) |
-| `src/lib/crawl/` | Website crawling & content extraction (not yet built) |
+| `src/app/p/` | Prospect-facing pitch page (text + voice mode) |
+| `src/app/api/chat/` | Claude API streaming with show_slide tool |
+| `src/app/api/elevenlabs/` | ElevenLabs signed URL + overrides |
+| `src/app/api/research/` | Prospect research + conversation reports |
+| `src/app/api/project/process-docs/` | Document processing + knowledge extraction |
+| `src/app/api/project/briefing-chat/` | Briefing interview/test chat |
+| `src/app/api/project/briefing-voice/` | Briefing voice signed URL + voice-optimized prompts |
+| `src/app/api/project/apply-knowledge/` | Apply knowledge changes |
+| `src/app/api/project/regenerate-prompt/` | On-demand prompt regeneration |
+| `src/app/api/project/slides/` | Slide image upload + metadata generation |
+| `src/lib/ai/` | Knowledge system, prompt generation, document extraction |
+| `src/lib/crawl/` | Website crawling & content extraction |
 
 ### Zone B — Person 2: UI, Dashboard & Infrastructure
 **Scope:** Everything the seller sees and interacts with.
@@ -67,26 +121,39 @@ This project is split between two people. **Before touching any file, check whic
 | Owned directories/files | Purpose |
 |---|---|
 | `src/app/page.tsx` | Public landing page |
-| `src/app/dashboard/` | All dashboard routes (projects, analytics, settings) |
-| `src/app/api/upload/` | File upload endpoints (not yet built) |
-| `src/components/` | All shared UI components |
-| `src/lib/storage/` | Supabase Storage helpers (not yet built) |
+| `src/app/dashboard/` | All dashboard routes |
+| `src/app/api/email/` | Email generation + sending via Gmail |
+| `src/app/api/og/` | OG image generation |
+| `src/app/api/auth/google/` | Gmail OAuth flow |
+| `src/app/api/project/logo/` | Project logo upload |
+| `src/app/api/project/settings/` | Settings JSONB updates |
+| `src/app/api/project/documents/` | Document upload/delete/download/set-presentation |
 
-### Shared (both zones may read, changes need coordination)
+### Shared Components (Zone A built, both zones use)
+| Component | Purpose |
+|---|---|
+| `src/components/agent-tuning-panels.tsx` | Tab wrapper with guards + shared state |
+| `src/components/agent-tabs/general-info.tsx` | Product facts form |
+| `src/components/agent-tabs/agent-behaviour.tsx` | Agent personality settings |
+| `src/components/document-manager.tsx` | Upload/delete docs with presentation checkbox |
+| `src/components/process-documents.tsx` | SSE progress bar for doc processing + slide generation |
+| `src/components/knowledge-overview.tsx` | Knowledge questions + quality + prompt preview |
+| `src/components/briefing-chat.tsx` | Interview/test chat with text + voice modes + checkpoints |
+| `src/components/pitch-page-editor.tsx` | Pitch page settings (headline, opening, suggested questions) |
+| `src/components/pitch-preview.tsx` | Static pitch page preview |
+| `src/components/suggested-questions-editor.tsx` | Add/remove/reorder suggested questions |
+| `src/components/ui/voice-powered-orb.tsx` | WebGL animated orb (OGL shader, mic + external intensity) |
+| `src/components/ui/button.tsx` | Radix UI button with variants |
+
+### Shared Infrastructure (changes need coordination)
 | Path | Purpose |
 |---|---|
-| `src/lib/supabase/` | Supabase clients & generated types — regenerate with `supabase gen types` |
+| `src/lib/supabase/` | Supabase clients (server, client, admin) & generated types |
+| `src/lib/utils.ts` | `cn()` classname utility |
 | `src/middleware.ts` | Auth middleware |
 | `src/app/layout.tsx` | Root layout |
 | `src/app/globals.css` | Global styles |
 | `supabase/migrations/` | DB schema |
-
-### Shared Interfaces (contract between zones)
-- **`messages` JSONB:** `{role: "user"|"assistant", content: string, timestamp: string, slide_shown?: number}`
-- **Slide images:** Storage Bucket `slides`, path `{project_id}/{slide_index}.png`
-- **`system_prompt`:** Generated by Zone A, displayed/editable by Zone B in dashboard
-- **`prospect_context`:** Generated by Zone A (crawl), shown by Zone B in pitch link preview
-- **Conversation data:** Written by Zone A (chat API), read by Zone B (analytics dashboard)
 
 ---
 
@@ -95,13 +162,77 @@ This project is split between two people. **Before touching any file, check whic
 2 storage buckets: `slides` (public), `documents` (private)
 All with RLS policies. See migration files for details.
 
+### Key JSONB Structures
+**`projects.settings`:**
+```json
+{
+  "product_name": "string",
+  "product_website": "string|null",
+  "product_description": "string|null",
+  "tone": "professional|casual|direct|friendly",
+  "aggressiveness": 1-5,
+  "pricing_strategy": "share|range|redirect|never",
+  "cta_type": "demo|trial|call|website|custom",
+  "response_length": "short|medium|detailed",
+  "custom_rules": "string|null",
+  "logo_url": "string|null",
+  "calendar_link": "string|null",
+  "presentation_doc_id": "string|null",
+  "last_processed_presentation_id": "string|null",
+  "custom_questions": [{ "id": "string", "category": "string", "question": "string" }],
+  "agent_knowledge": {
+    "<question_id>": {
+      "answer": "string",
+      "quality": "empty|basic|good|excellent",
+      "sourceType": "document|briefing|manual",
+      "sources": ["doc-uuid"],
+      "updatedAt": "ISO string",
+      "needsReview": false
+    }
+  }
+}
+```
+
+## API Endpoints
+
+| Endpoint | Method | Zone | Purpose |
+|---|---|---|---|
+| `/api/chat` | POST | A | Stream Claude responses with show_slide tool |
+| `/api/elevenlabs/signed-url` | POST | A | Get ElevenLabs session URL + overrides |
+| `/api/project/process-docs` | POST | A | Extract knowledge from docs (SSE streaming) |
+| `/api/project/briefing-chat` | POST | A | Interview/test streaming chat |
+| `/api/project/briefing-voice` | POST | A | Briefing voice signed URL + voice prompts |
+| `/api/project/apply-knowledge` | POST | A | Apply checkpoint changes + regenerate prompt |
+| `/api/project/regenerate-prompt` | POST | A | On-demand prompt regeneration |
+| `/api/project/slides/upload` | POST | A | Upload slide PNG to storage |
+| `/api/project/slides/generate-metadata` | POST | A | Claude Vision slide titles + descriptions |
+| `/api/research/prospect` | POST | A | Crawl + profile prospect |
+| `/api/research/report` | POST | A | Analyze conversation post-call |
+| `/api/project/settings` | POST | Shared | Update settings JSONB |
+| `/api/project/documents` | POST/DELETE | Shared | Upload/delete documents |
+| `/api/project/documents/set-presentation` | POST | Shared | Mark doc as presentation |
+| `/api/project/documents/download` | GET | Shared | Authenticated document download proxy |
+| `/api/project/logo` | POST | B | Upload project logo |
+| `/api/email/generate` | POST | B | Generate email template via Claude |
+| `/api/email/send` | POST | B | Send emails via Gmail API |
+| `/api/og/pitch` | GET | B | Generate OG image for pitch link |
+| `/api/auth/google` | GET | B | Initiate Gmail OAuth |
+| `/api/auth/google/callback` | GET | B | Complete Gmail OAuth |
+
 ## Key Architecture Decisions
-- **Clause-level chunking** in chat API (not sentence-level) for faster TTS — splits at `, ; : — . ! ?` with minimum 4 words
-- **Pipelined TTS** — next clause fetch starts while current clause plays
-- **ElevenLabs Flash v2.5** — lowest latency model for conversational use
-- **MP3 format** for TTS (PCM caused noise issues)
-- **Web Speech API** for voice input — `continuous: true` in Voice Mode, single-shot in Text Mode
-- **No ElevenLabs Agents** — we keep Claude as the brain, ElevenLabs only for voice output
+- **ElevenLabs Conversational AI** — Full voice pipeline (STT + LLM + TTS) via single WebSocket
+- **One ElevenLabs Agent + Runtime Overrides** — System prompt + first message overridden per session
+- **Knowledge-driven System Prompt** — Claude writes the system prompt from a structured knowledge base (12 standard + custom questions) + behaviour settings. Never manually edited.
+- **Quality Scoring** — Each knowledge answer rated empty/basic/good/excellent by Claude during extraction
+- **Source Protection** — Briefing (seller) corrections are never overwritten by document processing, only supplemented
+- **Doc Delete Knowledge Decision** — User chooses to "forget" or "keep" knowledge when removing a document
+- **Settings → Prompt Regeneration** — Saving General Info or Agent Behaviour immediately regenerates the system prompt
+- **PDF Vision Fallback** — `unpdf` for text-layer PDFs, Claude Vision (base64) for image-heavy pitch decks
+- **Client-Side Slide Rendering** — `pdfjs-dist` renders PDF pages on canvas in browser, uploads PNGs to storage. No server-side PDF rendering needed (works on Vercel).
+- **Tab Guards** — Unsaved changes modal overlay when switching tabs, processing blocks all tab switches
+- **WebGL VoicePoweredOrb** — OGL shader-based animated orb that responds to mic audio levels (`enableVoiceControl`) + external intensity (`externalIntensity` for agent speaking). Hue-shifted by state (speaking=280/pink, listening=120/green, idle=0/purple-blue).
+- **`createAdminClient`** — Service role Supabase client for storage + DB operations bypassing RLS. Used in public-facing routes (pitch page, signed-url) where user may not be authenticated.
+- **Defense-in-Depth RLS** — Public project read policy restricted to `auth.uid() IS NULL`. Dashboard queries also add explicit `user_id` filter.
 
 ## Commands
 ```bash
@@ -109,4 +240,18 @@ npm run dev          # Start dev server
 npm run build        # Production build
 supabase db push     # Push migrations to remote
 supabase gen types typescript --linked > src/lib/supabase/types.ts  # Regenerate types
+```
+
+## Environment Variables
+```
+ANTHROPIC_API_KEY
+ELEVENLABS_API_KEY
+ELEVENLABS_AGENT_ID
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY
+# Google OAuth (for Gmail sending):
+GOOGLE_CLIENT_ID
+GOOGLE_CLIENT_SECRET
+GOOGLE_REDIRECT_URI
 ```

@@ -1,40 +1,65 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY!;
 const ELEVENLABS_AGENT_ID = process.env.ELEVENLABS_AGENT_ID!;
 
-export async function GET(request: NextRequest) {
-  const slug = request.nextUrl.searchParams.get("slug");
+export async function POST(request: NextRequest) {
+  const { slug, prospectContext, conversationHistory } = await request.json() as {
+    slug: string;
+    prospectContext?: string | null;
+    conversationHistory?: { role: "user" | "assistant"; content: string }[];
+  };
+
   if (!slug) {
     return NextResponse.json({ error: "Missing slug" }, { status: 400 });
   }
 
-  const supabase = await createClient();
+  // Use admin client to bypass RLS — this is a public-facing endpoint
+  // called from pitch pages, where the visitor may or may not be authenticated
+  const supabase = createAdminClient();
 
-  // Load pitch link + project + slides (same query as page.tsx)
-  const { data: pitchLink, error } = await supabase
+  // Try pitch_links first, then fallback to projects (generic link)
+  let projectData: { system_prompt: string; company_name: string; settings: Record<string, unknown> };
+  let projectId: string;
+  let prospectName = "there";
+
+  const { data: pitchLink } = await supabase
     .from("pitch_links")
     .select("*, projects(*)")
     .eq("slug", slug)
     .eq("status", "active")
     .single();
 
-  if (!pitchLink || error) {
-    console.error("Supabase pitch_link query error:", error, "slug:", slug);
-    return NextResponse.json({ error: "Pitch link not found", detail: error?.message }, { status: 404 });
+  if (pitchLink) {
+    projectData = pitchLink.projects as typeof projectData;
+    projectId = pitchLink.project_id;
+    prospectName = pitchLink.prospect_name || "there";
+  } else {
+    // Fallback: look up as project slug
+    const { data: project } = await supabase
+      .from("projects")
+      .select("id, system_prompt, company_name, settings")
+      .eq("slug", slug)
+      .single();
+
+    if (!project) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    projectData = {
+      system_prompt: project.system_prompt || "",
+      company_name: project.company_name,
+      settings: (project.settings ?? {}) as Record<string, unknown>,
+    };
+    projectId = project.id;
   }
 
-  const project = pitchLink.projects as {
-    system_prompt: string;
-    company_name: string;
-    settings: Record<string, unknown>;
-  };
+  const project = projectData;
 
   const { data: slides } = await supabase
     .from("slides")
     .select("slide_index, title, description")
-    .eq("project_id", pitchLink.project_id)
+    .eq("project_id", projectId)
     .order("slide_index", { ascending: true });
 
   // Build system prompt (same logic as /api/chat)
@@ -44,7 +69,7 @@ export async function GET(request: NextRequest) {
 
   const basePrompt = project.system_prompt || "You are a helpful sales assistant.";
 
-  const fullSystemPrompt = `${basePrompt}
+  let fullSystemPrompt = `${basePrompt}
 
 ## Available Slides
 You have access to these slides. Use the show_slide tool to display the most relevant slide when answering questions.
@@ -65,8 +90,29 @@ Your responses will be read aloud via text-to-speech. Write in a natural, conver
 - Sound warm and enthusiastic, like you're having a real conversation, not reading a script
 - Avoid bullet points, markdown formatting, or anything visual — this is pure audio`;
 
-  const openingMessage =
-    `Hey! I know ${pitchLink.prospect_name} is doing great work. ` +
+  // Append prospect context if available
+  if (prospectContext) {
+    fullSystemPrompt += `\n\n## Prospect Intelligence\n${prospectContext}`;
+  }
+
+  // Append conversation history if switching from text mode
+  if (conversationHistory && conversationHistory.length > 1) {
+    const historyText = conversationHistory
+      .map((m) => `${m.role === "user" ? "Prospect" : "You"}: ${m.content}`)
+      .join("\n");
+
+    fullSystemPrompt += `\n\n## Previous Conversation
+The prospect has already been chatting with you in text mode. Continue naturally from where the conversation left off. Do NOT repeat your greeting or re-introduce yourself.
+
+${historyText}`;
+  }
+
+  const hasHistory = conversationHistory && conversationHistory.length > 1;
+
+  const openingMessage = hasHistory
+    ? "I'm here — feel free to keep talking!"
+    :
+    `Hey! I know ${prospectName} is doing great work. ` +
     `I can walk you through how ${project.company_name} can specifically help. ` +
     `What would you like to know?`;
 

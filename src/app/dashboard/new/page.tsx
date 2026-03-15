@@ -2,15 +2,13 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 export default function NewProjectPage() {
   const supabase = createClient();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [fileName, setFileName] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -20,7 +18,6 @@ export default function NewProjectPage() {
     const data = new FormData(e.currentTarget);
     const campaignName = data.get("campaign_name") as string;
     const productName = data.get("product_name") as string;
-    const file = fileRef.current?.files?.[0];
 
     const slug = campaignName
       .toLowerCase().trim()
@@ -37,20 +34,6 @@ export default function NewProjectPage() {
       .single();
 
     if (projectError) { setError(projectError.message); setLoading(false); return; }
-
-    if (file) {
-      const ext = file.name.split(".").pop()?.toLowerCase();
-      const path = `${project.id}/${Date.now()}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from("documents").upload(path, file);
-      if (!uploadError) {
-        await supabase.from("documents").insert({
-          project_id: project.id,
-          file_name: file.name,
-          file_type: file.type,
-          file_url: path,
-        });
-      }
-    }
 
     router.push(`/dashboard/${project.slug}/product`);
   }
@@ -88,27 +71,6 @@ export default function NewProjectPage() {
             id="product_name" name="product_name" type="text" required
             placeholder="PitchLink Pro"
             className="w-full rounded-lg bg-[#111] border border-[#2a2a2a] text-white placeholder:text-[#555] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors"
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium text-[#ccc]">Slide deck</label>
-          <div
-            className="border-2 border-dashed border-[#2a2a2a] hover:border-violet-500/50 rounded-xl px-4 py-8 text-center cursor-pointer transition-colors"
-            onClick={() => fileRef.current?.click()}
-          >
-            {fileName ? (
-              <p className="text-sm font-medium text-white">{fileName}</p>
-            ) : (
-              <>
-                <p className="text-sm text-[#666]">Click to upload PDF or PPTX</p>
-                <p className="text-xs text-[#444] mt-1">Optional — you can add slides later</p>
-              </>
-            )}
-          </div>
-          <input
-            ref={fileRef} type="file" accept=".pdf,.pptx" className="hidden"
-            onChange={(e) => setFileName(e.target.files?.[0]?.name ?? null)}
           />
         </div>
 
