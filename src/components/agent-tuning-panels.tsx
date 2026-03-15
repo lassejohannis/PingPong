@@ -51,6 +51,7 @@ export function AgentTuningPanels({
   const [systemPrompt, setSystemPrompt] = useState<string | null>(initialSystemPrompt);
   const [isChatActive, setIsChatActive] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [hasUnprocessedDocs, setHasUnprocessedDocs] = useState(false);
   const [presentationDocId, setPresentationDocId] = useState<string | null>(
     (initialSettings.presentation_doc_id as string) ?? null
@@ -82,7 +83,7 @@ export function AgentTuningPanels({
 
   const handleTabSwitch = useCallback((newTab: TabId) => {
     if (newTab === activeTab) return;
-    if (isProcessing) return; // Block all switches during processing
+    if (isProcessing || isSaving) return; // Block all switches during processing or saving
 
     // Check guards for current tab
     if (activeTab === "general" && isGeneralDirty) {
@@ -126,7 +127,7 @@ export function AgentTuningPanels({
     }
 
     setActiveTab(newTab);
-  }, [activeTab, isGeneralDirty, isBehaviourDirty, hasUnprocessedDocs, briefingPendingCount]);
+  }, [activeTab, isGeneralDirty, isBehaviourDirty, hasUnprocessedDocs, briefingPendingCount, isSaving]);
 
   const handleGuardSave = useCallback(async () => {
     if (guardActions?.onSave) {
@@ -159,11 +160,11 @@ export function AgentTuningPanels({
           <button
             key={tab.id}
             onClick={() => handleTabSwitch(tab.id)}
-            disabled={isProcessing && tab.id !== activeTab}
+            disabled={(isProcessing || isSaving) && tab.id !== activeTab}
             className={`px-4 py-2 text-sm transition-colors border-b-2 -mb-px ${
               activeTab === tab.id
                 ? "text-violet-300 border-violet-500"
-                : isProcessing
+                : isProcessing || isSaving
                 ? "text-[#444] border-transparent cursor-not-allowed"
                 : "text-[#999] border-transparent hover:text-violet-300 hover:border-violet-500/40"
             }`}
@@ -224,6 +225,7 @@ export function AgentTuningPanels({
           settings={initialSettings}
           onDirtyChange={setIsGeneralDirty}
           onPromptRegenerated={(prompt) => setSystemPrompt(prompt)}
+          onSavingChange={setIsSaving}
         />
       )}
 
@@ -233,6 +235,7 @@ export function AgentTuningPanels({
           settings={initialSettings}
           onDirtyChange={setIsBehaviourDirty}
           onPromptRegenerated={(prompt) => setSystemPrompt(prompt)}
+          onSavingChange={setIsSaving}
         />
       )}
 

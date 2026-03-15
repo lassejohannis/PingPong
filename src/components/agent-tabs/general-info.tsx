@@ -7,9 +7,10 @@ interface GeneralInfoProps {
   settings: Record<string, unknown>;
   onDirtyChange: (dirty: boolean) => void;
   onPromptRegenerated: (systemPrompt: string) => void;
+  onSavingChange?: (saving: boolean) => void;
 }
 
-export function GeneralInfo({ projectId, settings, onDirtyChange, onPromptRegenerated }: GeneralInfoProps) {
+export function GeneralInfo({ projectId, settings, onDirtyChange, onPromptRegenerated, onSavingChange }: GeneralInfoProps) {
   const [productName, setProductName] = useState((settings.product_name as string) ?? "");
   const [productWebsite, setProductWebsite] = useState((settings.product_website as string) ?? "");
   const [productDescription, setProductDescription] = useState((settings.product_description as string) ?? "");
@@ -27,6 +28,7 @@ export function GeneralInfo({ projectId, settings, onDirtyChange, onPromptRegene
 
   const handleSave = useCallback(async () => {
     setIsSaving(true);
+    onSavingChange?.(true);
     setSaved(false);
     try {
       const res = await fetch("/api/project/settings", {
@@ -59,8 +61,9 @@ export function GeneralInfo({ projectId, settings, onDirtyChange, onPromptRegene
       }
     } finally {
       setIsSaving(false);
+      onSavingChange?.(false);
     }
-  }, [projectId, productName, productWebsite, productDescription, onDirtyChange, onPromptRegenerated]);
+  }, [projectId, productName, productWebsite, productDescription, onDirtyChange, onPromptRegenerated, onSavingChange]);
 
   return (
     <div className="bg-[#111] border border-[#262626] rounded-xl p-6 space-y-5">

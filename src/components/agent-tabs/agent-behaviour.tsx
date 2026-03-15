@@ -7,9 +7,10 @@ interface AgentBehaviourProps {
   settings: Record<string, unknown>;
   onDirtyChange: (dirty: boolean) => void;
   onPromptRegenerated: (systemPrompt: string) => void;
+  onSavingChange?: (saving: boolean) => void;
 }
 
-export function AgentBehaviour({ projectId, settings, onDirtyChange, onPromptRegenerated }: AgentBehaviourProps) {
+export function AgentBehaviour({ projectId, settings, onDirtyChange, onPromptRegenerated, onSavingChange }: AgentBehaviourProps) {
   const [tone, setTone] = useState((settings.tone as string) ?? "professional");
   const [aggressiveness, setAggressiveness] = useState((settings.aggressiveness as number) ?? 2);
   const [pricingStrategy, setPricingStrategy] = useState((settings.pricing_strategy as string) ?? "range");
@@ -34,6 +35,7 @@ export function AgentBehaviour({ projectId, settings, onDirtyChange, onPromptReg
 
   const handleSave = useCallback(async () => {
     setIsSaving(true);
+    onSavingChange?.(true);
     setSaved(false);
     try {
       const res = await fetch("/api/project/settings", {
@@ -68,8 +70,9 @@ export function AgentBehaviour({ projectId, settings, onDirtyChange, onPromptReg
       }
     } finally {
       setIsSaving(false);
+      onSavingChange?.(false);
     }
-  }, [projectId, tone, aggressiveness, pricingStrategy, ctaType, responseLength, customRules, onDirtyChange, onPromptRegenerated]);
+  }, [projectId, tone, aggressiveness, pricingStrategy, ctaType, responseLength, customRules, onDirtyChange, onPromptRegenerated, onSavingChange]);
 
   const selectClass = "w-full rounded-lg bg-[#0d0d0d] border border-[#333] text-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors";
 
