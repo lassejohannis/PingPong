@@ -264,7 +264,7 @@ supabase db push     # Push migrations to remote
 supabase gen types typescript --linked > src/lib/supabase/types.ts  # Regenerate types
 ```
 
-## Environment Variables
+## Environment Variables:
 ```
 ANTHROPIC_API_KEY
 ELEVENLABS_API_KEY
