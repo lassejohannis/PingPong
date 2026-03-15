@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { CopyButton } from "@/components/copy-button";
 import { CsvImport } from "@/components/csv-import";
+import { LeadCopyButton } from "@/components/lead-copy-button";
 
 export default async function LeadsPage({
   params,
@@ -51,7 +52,7 @@ export default async function LeadsPage({
           <CsvImport projectId={project.id} projectSlug={projectSlug} />
           <Link
             href={`/dashboard/${projectSlug}/campaign`}
-            className="rounded-lg border border-[#2a2a2a] text-[#aaa] hover:text-white hover:border-[#444] px-4 py-2 text-sm font-medium transition-colors"
+            className="rounded-lg border border-[#333] text-[#ccc] hover:text-white hover:border-violet-500/40 px-4 py-2 text-sm font-medium transition-colors"
           >
             Mail Campaign
           </Link>
@@ -67,14 +68,16 @@ export default async function LeadsPage({
       {leads && leads.length > 0 ? (
         <div className="grid gap-2">
           {leads.map((lead) => (
-            <Link
+            <div
               key={lead.id}
-              href={`/dashboard/${projectSlug}/leads/${lead.slug}`}
-              className="flex items-center justify-between bg-[#111] border border-[#222] hover:border-violet-500/50 rounded-xl p-4 transition-colors group"
+              className="flex items-center bg-[#111] border border-[#222] hover:border-violet-500/50 rounded-xl transition-colors group"
             >
-              <div className="min-w-0">
+              <Link
+                href={`/dashboard/${projectSlug}/leads/${lead.slug}`}
+                className="flex-1 min-w-0 p-4"
+              >
                 <h3 className="font-medium text-white group-hover:text-violet-300 transition-colors">{lead.prospect_name}</h3>
-                <div className="flex gap-3 mt-0.5">
+                <div className="flex gap-3 mt-0.5 flex-wrap">
                   {lead.prospect_url && (
                     <p className="text-sm text-[#555] truncate">{lead.prospect_url}</p>
                   )}
@@ -82,21 +85,24 @@ export default async function LeadsPage({
                     <p className="text-sm text-[#555]">{lead.contact_email}</p>
                   )}
                 </div>
+              </Link>
+              <div className="flex items-center gap-3 pr-4 shrink-0">
+                <LeadCopyButton url={`${appUrl}/p/${lead.slug}`} />
+                <span
+                  className={`text-xs px-2 py-0.5 rounded-md font-medium ${
+                    lead.status === "active"
+                      ? "bg-emerald-950/60 text-emerald-400 border border-emerald-800/40"
+                      : "bg-[#1a1a1a] text-[#888] border border-[#333]"
+                  }`}
+                >
+                  {lead.status}
+                </span>
               </div>
-              <span
-                className={`shrink-0 text-xs px-2 py-0.5 rounded-md font-medium ${
-                  lead.status === "active"
-                    ? "bg-emerald-950/60 text-emerald-400 border border-emerald-800/40"
-                    : "bg-[#1a1a1a] text-[#666] border border-[#2a2a2a]"
-                }`}
-              >
-                {lead.status}
-              </span>
-            </Link>
+            </div>
           ))}
         </div>
       ) : (
-        <div className="border-2 border-dashed border-[#1e1e1e] rounded-xl p-12 text-center">
+        <div className="border-2 border-dashed border-[#262626] rounded-xl p-12 text-center">
           <p className="text-sm text-[#555]">No leads yet.</p>
           <p className="text-xs text-[#444] mt-1">Add leads manually or import a CSV.</p>
         </div>

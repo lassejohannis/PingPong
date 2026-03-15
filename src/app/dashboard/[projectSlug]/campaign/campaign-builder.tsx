@@ -5,6 +5,8 @@ import { useState, useEffect } from "react";
 type Lead = {
   slug: string;
   prospect_name: string;
+  first_name?: string | null;
+  last_name?: string | null;
   headline: string;
   contact_email: string | null;
 };
@@ -66,17 +68,22 @@ export function CampaignBuilder({ projectId, projectSlug, productName, leads, ap
   const leadsWithoutEmail = leads.length - leadsWithEmail.length;
   const selectedLead = leads[selectedLeadIndex];
 
-  function interpolate(lead: Lead) {
+  function interpolate(lead: Lead, forPreview = false) {
     const pitchUrl = `${appUrl}/p/${lead.slug}`;
-    const ogImageUrl = `${appUrl}/api/og/pitch?${new URLSearchParams({
+    const ogBaseUrl = forPreview && typeof window !== "undefined" ? window.location.origin : appUrl;
+    const ogImageUrl = `${ogBaseUrl}/api/og/pitch?${new URLSearchParams({
       prospect: lead.prospect_name,
       product: productName,
       headline: lead.headline,
     })}`;
+    const contactName = [lead.first_name, lead.last_name].filter(Boolean).join(" ") || lead.prospect_name;
     return {
-      subject: subject.replace(/\{\{prospect_name\}\}/g, lead.prospect_name),
+      subject: subject
+        .replace(/\{\{prospect_name\}\}/g, lead.prospect_name)
+        .replace(/\{\{contact_name\}\}/g, contactName),
       html: bodyHtml
         .replace(/\{\{prospect_name\}\}/g, lead.prospect_name)
+        .replace(/\{\{contact_name\}\}/g, contactName)
         .replace(/\{\{pitch_link_url\}\}/g, pitchUrl)
         .replace(/\{\{og_image_url\}\}/g, ogImageUrl),
     };
@@ -114,14 +121,14 @@ export function CampaignBuilder({ projectId, projectSlug, productName, leads, ap
     }
   }
 
-  const preview = selectedLead ? interpolate(selectedLead) : null;
+  const preview = selectedLead ? interpolate(selectedLead, true) : null;
   const returnTo = `/dashboard/${projectSlug}/campaign`;
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-white">Mail Campaign</h1>
-        <p className="text-sm text-[#666] mt-1">
+        <p className="text-sm text-[#888] mt-1">
           AI-generated email with a personalised pitch link for each lead.
         </p>
       </div>
@@ -137,7 +144,7 @@ export function CampaignBuilder({ projectId, projectSlug, productName, leads, ap
                   key={btn.label}
                   onClick={() => handleToneAdjust(btn.instruction)}
                   disabled={generating}
-                  className="rounded-full border border-[#2a2a2a] text-[#888] hover:text-white hover:border-[#444] px-3 py-1 text-xs font-medium transition-colors disabled:opacity-40"
+                  className="rounded-full border border-[#333] text-[#888] hover:text-white hover:border-violet-500/40 px-3 py-1 text-xs font-medium transition-colors disabled:opacity-40"
                 >
                   {btn.label}
                 </button>
@@ -156,7 +163,7 @@ export function CampaignBuilder({ projectId, projectSlug, productName, leads, ap
               type="text"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              className="w-full rounded-lg bg-[#111] border border-[#2a2a2a] text-white placeholder:text-[#555] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors"
+              className="w-full rounded-lg bg-[#111] border border-[#333] text-white placeholder:text-[#555] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors"
             />
           </div>
 
@@ -166,11 +173,12 @@ export function CampaignBuilder({ projectId, projectSlug, productName, leads, ap
               value={bodyHtml}
               onChange={(e) => setBodyHtml(e.target.value)}
               rows={18}
-              className="w-full rounded-lg bg-[#111] border border-[#2a2a2a] text-white placeholder:text-[#555] px-3 py-2.5 text-sm font-mono outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors resize-y"
+              className="w-full rounded-lg bg-[#111] border border-[#333] text-white placeholder:text-[#555] px-3 py-2.5 text-sm font-mono outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors resize-y"
             />
             <p className="text-xs text-[#444]">
               Tokens:{" "}
               <code className="bg-[#1a1a1a] text-[#888] px-1 rounded">{"{{prospect_name}}"}</code>{" "}
+              <code className="bg-[#1a1a1a] text-[#888] px-1 rounded">{"{{contact_name}}"}</code>{" "}
               <code className="bg-[#1a1a1a] text-[#888] px-1 rounded">{"{{pitch_link_url}}"}</code>{" "}
               <code className="bg-[#1a1a1a] text-[#888] px-1 rounded">{"{{og_image_url}}"}</code>
             </p>
@@ -184,7 +192,7 @@ export function CampaignBuilder({ projectId, projectSlug, productName, leads, ap
             <select
               value={selectedLeadIndex}
               onChange={(e) => setSelectedLeadIndex(Number(e.target.value))}
-              className="rounded-lg bg-[#111] border border-[#2a2a2a] text-white px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 flex-1"
+              className="rounded-lg bg-[#111] border border-[#333] text-white px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 flex-1"
             >
               {leads.map((lead, i) => (
                 <option key={lead.slug} value={i}>
@@ -192,16 +200,16 @@ export function CampaignBuilder({ projectId, projectSlug, productName, leads, ap
                 </option>
               ))}
             </select>
-            <div className="flex rounded-lg border border-[#2a2a2a] overflow-hidden text-xs">
+            <div className="flex rounded-lg border border-[#333] overflow-hidden text-xs">
               <button
                 onClick={() => setPreviewMode("rendered")}
-                className={`px-3 py-1.5 transition-colors ${previewMode === "rendered" ? "bg-violet-600 text-white" : "text-[#666] hover:text-white"}`}
+                className={`px-3 py-1.5 transition-colors ${previewMode === "rendered" ? "bg-violet-600 text-white" : "text-[#888] hover:text-white"}`}
               >
                 Preview
               </button>
               <button
                 onClick={() => setPreviewMode("html")}
-                className={`px-3 py-1.5 border-l border-[#2a2a2a] transition-colors ${previewMode === "html" ? "bg-violet-600 text-white" : "text-[#666] hover:text-white"}`}
+                className={`px-3 py-1.5 border-l border-[#333] transition-colors ${previewMode === "html" ? "bg-violet-600 text-white" : "text-[#888] hover:text-white"}`}
               >
                 HTML
               </button>
@@ -216,7 +224,7 @@ export function CampaignBuilder({ projectId, projectSlug, productName, leads, ap
 
           {preview && (
             <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-              <div className="border-b border-[#1e1e1e] px-4 py-3">
+              <div className="border-b border-[#262626] px-4 py-3">
                 <p className="text-xs text-[#555]">Subject</p>
                 <p className="text-sm font-medium text-white">{preview.subject}</p>
               </div>
@@ -233,7 +241,7 @@ export function CampaignBuilder({ projectId, projectSlug, productName, leads, ap
           )}
 
           {leads.length === 0 && (
-            <div className="border-2 border-dashed border-[#1e1e1e] rounded-xl p-8 text-center">
+            <div className="border-2 border-dashed border-[#262626] rounded-xl p-8 text-center">
               <p className="text-sm text-[#555]">No leads yet.</p>
               <p className="text-xs text-[#444] mt-1">
                 Add leads on the{" "}
@@ -246,16 +254,16 @@ export function CampaignBuilder({ projectId, projectSlug, productName, leads, ap
       </div>
 
       {/* Bottom bar */}
-      <div className="border-t border-[#1a1a1a] pt-4 flex items-center justify-between gap-4 flex-wrap">
+      <div className="border-t border-[#222] pt-4 flex items-center justify-between gap-4 flex-wrap">
         {gmailEmail ? (
-          <p className="text-sm text-[#666]">
-            Sending from <span className="text-[#aaa]">{gmailEmail}</span>
+          <p className="text-sm text-[#888]">
+            Sending from <span className="text-[#ccc]">{gmailEmail}</span>
           </p>
         ) : (
           <div className="flex flex-col gap-1">
             <a
               href={`/api/auth/google?returnTo=${encodeURIComponent(returnTo)}`}
-              className="rounded-lg border border-[#2a2a2a] text-[#aaa] hover:text-white hover:border-[#444] px-4 py-2 text-sm font-medium transition-colors"
+              className="rounded-lg border border-[#333] text-[#ccc] hover:text-white hover:border-violet-500/40 px-4 py-2 text-sm font-medium transition-colors"
             >
               Connect Gmail to send
             </a>

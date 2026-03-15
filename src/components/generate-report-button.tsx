@@ -25,7 +25,7 @@ export function GenerateReportButton({ conversationId }: { conversationId: strin
     <button
       onClick={generate}
       disabled={loading}
-      className="text-xs border border-[#2a2a2a] text-[#888] hover:text-white hover:border-[#444] rounded-lg px-3 py-1 transition-colors disabled:opacity-50"
+      className="text-xs border border-[#333] text-[#888] hover:text-white hover:border-violet-500/40 rounded-lg px-3 py-1 transition-colors disabled:opacity-50"
     >
       {loading ? "Generating…" : "Generate report"}
     </button>

@@ -57,7 +57,7 @@ export function BriefingChat({
   }, [pendingChanges, onPendingCountChange]);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // --- ElevenLabs Voice ---
   const conversation = useConversation({
@@ -323,7 +323,7 @@ export function BriefingChat({
   // Inactive state
   if (!isActive) {
     return (
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-6 space-y-4">
+      <div className="bg-[#111] border border-[#262626] rounded-xl p-6 space-y-4">
         <div>
           <h2 className="text-sm font-semibold text-white">Agent Briefing</h2>
           <p className="text-xs text-[#555] mt-0.5">
@@ -351,9 +351,9 @@ export function BriefingChat({
     : "Ready";
 
   return (
-    <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+    <div className="bg-[#111] border border-[#262626] rounded-xl overflow-hidden">
       {/* Header with toggles */}
-      <div className="border-b border-[#1e1e1e] px-5 py-3 flex items-center justify-between">
+      <div className="border-b border-[#262626] px-5 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <h2 className="text-sm font-semibold text-white">Agent Briefing</h2>
 
@@ -365,7 +365,7 @@ export function BriefingChat({
               className={`px-3 py-1 text-xs rounded-md transition-colors ${
                 mode === "interview"
                   ? "bg-violet-600 text-white"
-                  : "text-[#666] hover:text-white"
+                  : "text-[#888] hover:text-white"
               } disabled:opacity-40 disabled:cursor-not-allowed`}
             >
               Interview
@@ -376,7 +376,7 @@ export function BriefingChat({
               className={`px-3 py-1 text-xs rounded-md transition-colors ${
                 mode === "test"
                   ? "bg-violet-600 text-white"
-                  : "text-[#666] hover:text-white"
+                  : "text-[#888] hover:text-white"
               } disabled:opacity-40 disabled:cursor-not-allowed`}
             >
               Test
@@ -390,7 +390,7 @@ export function BriefingChat({
               className={`px-2 py-1 text-xs rounded-md transition-colors ${
                 inputMode === "text"
                   ? "bg-[#222] text-white"
-                  : "text-[#666] hover:text-white"
+                  : "text-[#888] hover:text-white"
               }`}
               title="Text mode"
             >
@@ -403,7 +403,7 @@ export function BriefingChat({
               className={`px-2 py-1 text-xs rounded-md transition-colors ${
                 inputMode === "voice"
                   ? "bg-[#222] text-white"
-                  : "text-[#666] hover:text-white"
+                  : "text-[#888] hover:text-white"
               }`}
               title="Voice mode"
             >
@@ -462,7 +462,7 @@ export function BriefingChat({
             ) : isVoiceConnecting ? (
               <button
                 disabled
-                className="px-6 py-2.5 rounded-lg bg-[#222] text-[#666] text-sm font-medium cursor-not-allowed"
+                className="px-6 py-2.5 rounded-lg bg-[#222] text-[#888] text-sm font-medium cursor-not-allowed"
               >
                 Connecting...
               </button>
@@ -531,7 +531,7 @@ export function BriefingChat({
 
         {/* Checkpoint dialog (shared between text and voice) */}
         {showCheckpoint && (
-          <div className="border-t border-[#1e1e1e] bg-[#0d0d0d] p-4 space-y-3">
+          <div className="border-t border-[#262626] bg-[#0d0d0d] p-4 space-y-3">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-violet-400" />
               <p className="text-sm font-medium text-white">Checkpoint</p>
@@ -543,7 +543,7 @@ export function BriefingChat({
                   key={i}
                   className={`flex items-start gap-3 border rounded-lg px-3 py-2 text-xs transition-colors ${
                     change.rejected
-                      ? "bg-[#0a0a0a] border-[#1a1a1a] opacity-50"
+                      ? "bg-[#0a0a0a] border-[#222] opacity-50"
                       : "bg-[#111] border-[#222]"
                   }`}
                 >
@@ -594,20 +594,26 @@ export function BriefingChat({
 
         {/* Text input (only in text mode) */}
         {inputMode === "text" && (
-          <form onSubmit={handleSubmit} className="border-t border-[#1a1a1a] p-3">
+          <form onSubmit={handleSubmit} className="border-t border-[#222] p-3">
             <div className="flex gap-2 items-center">
-              <input
+              <textarea
                 ref={inputRef}
-                type="text"
+                rows={1}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage(input);
+                  }
+                }}
                 placeholder={
                   mode === "interview"
-                    ? "Answer the AI's questions..."
-                    : "Ask like a prospect or correct the agent..."
+                    ? "Answer the AI's questions…"
+                    : "Ask like a prospect…"
                 }
                 disabled={isStreaming || showCheckpoint}
-                className="flex-1 bg-[#0d0d0d] border border-[#222] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#444] outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent disabled:opacity-50 transition-colors"
+                className="flex-1 bg-[#0d0d0d] border border-[#222] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#444] outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent disabled:opacity-50 transition-colors resize-none"
               />
               <button
                 type="submit"

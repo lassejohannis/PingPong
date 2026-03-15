@@ -41,7 +41,7 @@ export function ProspectResearchTrigger({ pitchLinkId, prospectName, hasUrl }: P
       {status === "loading" && (
         <>
           <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
-          <span className="text-[#666]">Researching {prospectName}…</span>
+          <span className="text-[#888]">Researching {prospectName}…</span>
         </>
       )}
       {status === "done" && (

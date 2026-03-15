@@ -5,7 +5,7 @@ import type { ConversationReport } from "@/app/api/research/report/route";
 const INTEREST_COLORS = {
   HOT: "bg-red-950/60 text-red-400 border-red-800/40",
   WARM: "bg-yellow-950/60 text-yellow-400 border-yellow-800/40",
-  NOT_A_FIT: "bg-[#1a1a1a] text-[#666] border-[#2a2a2a]",
+  NOT_A_FIT: "bg-[#1a1a1a] text-[#888] border-[#333]",
 };
 
 export default async function AnalyticsPage({
@@ -57,25 +57,23 @@ export default async function AnalyticsPage({
 
   const total = conversations?.length ?? 0;
   const hot = conversations?.filter((c) => c.qualification === "HOT").length ?? 0;
-  const warm = conversations?.filter((c) => c.qualification === "WARM").length ?? 0;
   const notAFit = conversations?.filter((c) => c.qualification === "NOT_A_FIT").length ?? 0;
 
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-white">Analytics</h1>
-        <p className="text-sm text-[#666] mt-1">Track how prospects engage with your pitch links.</p>
+        <p className="text-sm text-[#888] mt-1">Track how prospects engage with your pitch links.</p>
       </div>
 
       {/* Summary stats */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         {[
           { label: "Total conversations", value: total, color: "text-white" },
           { label: "HOT leads", value: hot, color: "text-red-400" },
-          { label: "WARM leads", value: warm, color: "text-yellow-400" },
           { label: "Not a fit", value: notAFit, color: "text-[#555]" },
         ].map(({ label, value, color }) => (
-          <div key={label} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+          <div key={label} className="bg-[#111] border border-[#262626] rounded-xl p-4">
             <p className={`text-2xl font-bold ${color}`}>{value}</p>
             <p className="text-xs text-[#555] mt-1">{label}</p>
           </div>
@@ -83,7 +81,7 @@ export default async function AnalyticsPage({
       </div>
 
       {!conversations || conversations.length === 0 ? (
-        <div className="border-2 border-dashed border-[#1e1e1e] rounded-xl p-16 text-center">
+        <div className="border-2 border-dashed border-[#262626] rounded-xl p-16 text-center">
           <p className="text-sm text-[#444]">No conversations yet.</p>
           <p className="text-xs text-[#333] mt-1">
             When prospects open their pitch links, conversations will appear here.
@@ -104,7 +102,7 @@ export default async function AnalyticsPage({
             }
 
             return (
-              <div key={conv.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 space-y-4">
+              <div key={conv.id} className="bg-[#111] border border-[#262626] rounded-xl p-5 space-y-4">
                 <div className="flex items-start justify-between gap-4">
                   <div className="space-y-0.5">
                     <h3 className="font-semibold text-white">
@@ -153,7 +151,7 @@ export default async function AnalyticsPage({
 
                 {/* Report */}
                 {report && (
-                  <div className="space-y-3 pt-3 border-t border-[#1a1a1a]">
+                  <div className="space-y-3 pt-3 border-t border-[#222]">
                     {report.questions_asked.length > 0 && (
                       <div className="space-y-1.5">
                         <p className="text-xs text-[#555] uppercase tracking-wide">Questions asked</p>
@@ -182,7 +180,7 @@ export default async function AnalyticsPage({
                       </div>
                     )}
 
-                    <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-3 py-2.5">
+                    <div className="bg-[#0d0d0d] border border-[#262626] rounded-lg px-3 py-2.5">
                       <p className="text-xs text-[#555] uppercase tracking-wide mb-1">
                         Recommended follow-up
                       </p>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import type { AgentKnowledge, KnowledgeQuestion } from "@/lib/ai/knowledge-questions";
 import { GeneralInfo } from "./agent-tabs/general-info";
 import { AgentBehaviour } from "./agent-tabs/agent-behaviour";
@@ -72,6 +72,13 @@ export function AgentTuningPanels({
   const [isGeneralDirty, setIsGeneralDirty] = useState(false);
   const [isBehaviourDirty, setIsBehaviourDirty] = useState(false);
   const [briefingPendingCount, setBriefingPendingCount] = useState(0);
+
+  useEffect(() => {
+    if (!isProcessing) return;
+    const handle = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", handle);
+    return () => window.removeEventListener("beforeunload", handle);
+  }, [isProcessing]);
 
   const handleTabSwitch = useCallback((newTab: TabId) => {
     if (newTab === activeTab) return;
@@ -147,7 +154,7 @@ export function AgentTuningPanels({
   return (
     <div className="space-y-6">
       {/* Sub-tab navigation */}
-      <div className="flex gap-1 border-b border-[#1a1a1a] pb-0">
+      <div className="flex gap-1 border-b border-[#222] pb-0">
         {TABS.map((tab) => (
           <button
             key={tab.id}
@@ -155,10 +162,10 @@ export function AgentTuningPanels({
             disabled={isProcessing && tab.id !== activeTab}
             className={`px-4 py-2 text-sm transition-colors border-b-2 -mb-px ${
               activeTab === tab.id
-                ? "text-white border-violet-500"
+                ? "text-violet-300 border-violet-500"
                 : isProcessing
-                ? "text-[#333] border-transparent cursor-not-allowed"
-                : "text-[#666] border-transparent hover:text-white hover:border-[#444]"
+                ? "text-[#444] border-transparent cursor-not-allowed"
+                : "text-[#999] border-transparent hover:text-violet-300 hover:border-violet-500/40"
             }`}
           >
             {tab.label}
@@ -178,7 +185,7 @@ export function AgentTuningPanels({
       {showGuard && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => { setShowGuard(false); setPendingTab(null); }} />
-          <div className="relative bg-[#111] border border-[#2a2a2a] rounded-xl p-6 space-y-4 max-w-sm w-full mx-4 shadow-2xl">
+          <div className="relative bg-[#111] border border-[#333] rounded-xl p-6 space-y-4 max-w-sm w-full mx-4 shadow-2xl">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-yellow-500" />
               <p className="text-sm font-semibold text-white">Unsaved Changes</p>

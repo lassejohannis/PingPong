@@ -57,7 +57,7 @@ export default async function AccountPage() {
         </div>
 
         {/* Profile form */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-6 space-y-5">
+        <div className="bg-[#111] border border-[#262626] rounded-xl p-6 space-y-5">
           <h2 className="text-sm font-semibold text-white">Profile</h2>
           <form action={saveProfile} className="space-y-4">
             <div className="space-y-1.5">
@@ -68,7 +68,7 @@ export default async function AccountPage() {
                 id="name" name="name" type="text" required
                 defaultValue={profile?.name ?? ""}
                 placeholder="Jane Smith"
-                className="w-full rounded-lg bg-[#0d0d0d] border border-[#2a2a2a] text-white placeholder:text-[#555] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors"
+                className="w-full rounded-lg bg-[#0d0d0d] border border-[#333] text-white placeholder:text-[#555] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors"
               />
             </div>
 
@@ -80,7 +80,7 @@ export default async function AccountPage() {
                 id="company_name" name="company_name" type="text" required
                 defaultValue={profile?.company_name ?? ""}
                 placeholder="Acme Inc."
-                className="w-full rounded-lg bg-[#0d0d0d] border border-[#2a2a2a] text-white placeholder:text-[#555] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors"
+                className="w-full rounded-lg bg-[#0d0d0d] border border-[#333] text-white placeholder:text-[#555] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors"
               />
             </div>
 
@@ -88,7 +88,7 @@ export default async function AccountPage() {
               <label className="text-sm font-medium text-[#ccc]">Email</label>
               <input
                 type="text" value={user.email} disabled
-                className="w-full rounded-lg bg-[#0a0a0a] border border-[#1a1a1a] text-[#3a3a3a] px-3 py-2.5 text-sm cursor-not-allowed"
+                className="w-full rounded-lg bg-[#0a0a0a] border border-[#222] text-[#3a3a3a] px-3 py-2.5 text-sm cursor-not-allowed"
               />
             </div>
 
@@ -102,7 +102,7 @@ export default async function AccountPage() {
         </div>
 
         {/* Sign out */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-6 space-y-3">
+        <div className="bg-[#111] border border-[#262626] rounded-xl p-6 space-y-3">
           <h2 className="text-sm font-semibold text-white">Session</h2>
           <p className="text-xs text-[#555]">You are signed in as {user.email}.</p>
           <form action="/auth/signout" method="post">

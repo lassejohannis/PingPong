@@ -71,10 +71,10 @@ export function AgentBehaviour({ projectId, settings, onDirtyChange, onPromptReg
     }
   }, [projectId, tone, aggressiveness, pricingStrategy, ctaType, responseLength, customRules, onDirtyChange, onPromptRegenerated]);
 
-  const selectClass = "w-full rounded-lg bg-[#0d0d0d] border border-[#2a2a2a] text-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors";
+  const selectClass = "w-full rounded-lg bg-[#0d0d0d] border border-[#333] text-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors";
 
   return (
-    <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-6 space-y-5">
+    <div className="bg-[#111] border border-[#262626] rounded-xl p-6 space-y-5">
       <div>
         <h2 className="text-sm font-semibold text-white">Agent Behaviour</h2>
         <p className="text-xs text-[#555] mt-0.5">Define how the AI agent communicates and sells.</p>
@@ -150,7 +150,7 @@ export function AgentBehaviour({ projectId, settings, onDirtyChange, onPromptReg
           onChange={(e) => setCustomRules(e.target.value)}
           placeholder={"Example rules:\n- Never mention competitor X by name\n- Always ask for company size early\n- Don't promise features on the roadmap"}
           rows={4}
-          className="w-full rounded-lg bg-[#0d0d0d] border border-[#2a2a2a] text-white placeholder:text-[#555] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors resize-none"
+          className="w-full rounded-lg bg-[#0d0d0d] border border-[#333] text-white placeholder:text-[#555] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors resize-none"
         />
       </div>
 

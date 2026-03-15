@@ -91,7 +91,7 @@ export function KnowledgeOverview({
   }, [projectId, customQuestions, onCustomQuestionsChange]);
 
   return (
-    <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-6 space-y-5">
+    <div className="bg-[#111] border border-[#262626] rounded-xl p-6 space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-sm font-semibold text-white">Knowledge Base</h2>
@@ -103,14 +103,14 @@ export function KnowledgeOverview({
           {systemPrompt && (
             <button
               onClick={() => setShowPrompt(!showPrompt)}
-              className="text-xs px-3 py-1.5 rounded-lg border border-[#2a2a2a] text-[#888] hover:text-white hover:border-[#444] transition-colors"
+              className="text-xs px-3 py-1.5 rounded-lg border border-[#333] text-[#888] hover:text-white hover:border-violet-500/40 transition-colors"
             >
               {showPrompt ? "Hide Prompt" : "View Prompt"}
             </button>
           )}
           <button
             onClick={() => setShowAddForm(!showAddForm)}
-            className="text-xs px-3 py-1.5 rounded-lg border border-[#2a2a2a] text-[#888] hover:text-white hover:border-[#444] transition-colors"
+            className="text-xs px-3 py-1.5 rounded-lg border border-[#333] text-[#888] hover:text-white hover:border-violet-500/40 transition-colors"
           >
             + Add Question
           </button>
@@ -134,13 +134,13 @@ export function KnowledgeOverview({
               value={newQuestion}
               onChange={(e) => setNewQuestion(e.target.value)}
               placeholder="What should the agent know? e.g. 'What is our onboarding process?'"
-              className="flex-1 rounded-lg bg-[#111] border border-[#2a2a2a] text-white placeholder:text-[#555] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              className="flex-1 rounded-lg bg-[#111] border border-[#333] text-white placeholder:text-[#555] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
               onKeyDown={(e) => e.key === "Enter" && handleAddQuestion()}
             />
             <select
               value={newCategory}
               onChange={(e) => setNewCategory(e.target.value as KnowledgeCategory)}
-              className="rounded-lg bg-[#111] border border-[#2a2a2a] text-white px-3 py-2 text-sm outline-none"
+              className="rounded-lg bg-[#111] border border-[#333] text-white px-3 py-2 text-sm outline-none"
             >
               {CATEGORY_OPTIONS.map((cat) => (
                 <option key={cat} value={cat}>{cat}</option>
@@ -168,7 +168,7 @@ export function KnowledgeOverview({
       {/* System prompt preview */}
       {showPrompt && systemPrompt && (
         <div className="space-y-2">
-          <h3 className="text-xs font-medium text-[#666] uppercase tracking-wider">Generated System Prompt</h3>
+          <h3 className="text-xs font-medium text-[#888] uppercase tracking-wider">Generated System Prompt</h3>
           <textarea
             readOnly
             value={systemPrompt}
@@ -181,7 +181,7 @@ export function KnowledgeOverview({
       <div className="space-y-4">
         {categories.map((category) => (
           <div key={category}>
-            <h3 className="text-xs font-medium text-[#666] uppercase tracking-wider mb-2">{category}</h3>
+            <h3 className="text-xs font-medium text-[#888] uppercase tracking-wider mb-2">{category}</h3>
             <div className="space-y-2">
               {allQuestions
                 .filter((q) => q.category === category)
@@ -195,7 +195,7 @@ export function KnowledgeOverview({
                       className={`rounded-lg border px-4 py-3 group ${
                         hasAnswer
                           ? "border-[#222] bg-[#0d0d0d]"
-                          : "border-[#1a1a1a] bg-[#0a0a0a]"
+                          : "border-[#222] bg-[#0a0a0a]"
                       }`}
                     >
                       <div className="flex items-start gap-2">

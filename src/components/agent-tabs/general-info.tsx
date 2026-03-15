@@ -63,7 +63,7 @@ export function GeneralInfo({ projectId, settings, onDirtyChange, onPromptRegene
   }, [projectId, productName, productWebsite, productDescription, onDirtyChange, onPromptRegenerated]);
 
   return (
-    <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-6 space-y-5">
+    <div className="bg-[#111] border border-[#262626] rounded-xl p-6 space-y-5">
       <div>
         <h2 className="text-sm font-semibold text-white">General Information</h2>
         <p className="text-xs text-[#555] mt-0.5">Basic facts about your product.</p>
@@ -79,7 +79,7 @@ export function GeneralInfo({ projectId, settings, onDirtyChange, onPromptRegene
             value={productName}
             onChange={(e) => setProductName(e.target.value)}
             placeholder="PitchLink Pro"
-            className="w-full rounded-lg bg-[#0d0d0d] border border-[#2a2a2a] text-white placeholder:text-[#555] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors"
+            className="w-full rounded-lg bg-[#0d0d0d] border border-[#333] text-white placeholder:text-[#555] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors"
           />
         </div>
 
@@ -92,7 +92,7 @@ export function GeneralInfo({ projectId, settings, onDirtyChange, onPromptRegene
             value={productWebsite}
             onChange={(e) => setProductWebsite(e.target.value)}
             placeholder="https://yourproduct.com"
-            className="w-full rounded-lg bg-[#0d0d0d] border border-[#2a2a2a] text-white placeholder:text-[#555] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors"
+            className="w-full rounded-lg bg-[#0d0d0d] border border-[#333] text-white placeholder:text-[#555] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors"
           />
         </div>
 
@@ -106,7 +106,7 @@ export function GeneralInfo({ projectId, settings, onDirtyChange, onPromptRegene
             onChange={(e) => setProductDescription(e.target.value)}
             placeholder="Describe your product in 2-3 sentences. What does it do and who is it for?"
             rows={3}
-            className="w-full rounded-lg bg-[#0d0d0d] border border-[#2a2a2a] text-white placeholder:text-[#555] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors resize-none"
+            className="w-full rounded-lg bg-[#0d0d0d] border border-[#333] text-white placeholder:text-[#555] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors resize-none"
           />
         </div>
       </div>

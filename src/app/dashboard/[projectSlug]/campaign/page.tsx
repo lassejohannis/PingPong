@@ -29,10 +29,10 @@ export default async function CampaignPage({
       : {};
   const productName = settings.product_name ?? project.company_name;
 
-  type LeadRow = { slug: string; prospect_name: string; headline: string; contact_email: string | null };
+  type LeadRow = { slug: string; prospect_name: string; first_name?: string | null; last_name?: string | null; headline: string; contact_email: string | null };
   const { data: rawLeads } = await supabase
     .from("pitch_links")
-    .select("slug, prospect_name, headline, contact_email")
+    .select("slug, prospect_name, first_name, last_name, headline, contact_email")
     .eq("project_id", project.id)
     .eq("status", "active")
     .order("created_at", { ascending: false })

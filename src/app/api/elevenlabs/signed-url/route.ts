@@ -109,12 +109,27 @@ ${historyText}`;
 
   const hasHistory = conversationHistory && conversationHistory.length > 1;
 
+  // Fetch the seller's company name from the users table
+  const { data: projectRow } = await supabase
+    .from("projects")
+    .select("user_id")
+    .eq("id", projectId)
+    .single();
+  let sellerCompanyName = (project.settings.product_name as string | undefined) || project.company_name;
+  if (projectRow?.user_id) {
+    const { data: userProfile } = await supabase
+      .from("users")
+      .select("company_name")
+      .eq("id", projectRow.user_id)
+      .single();
+    if (userProfile?.company_name) sellerCompanyName = userProfile.company_name;
+  }
+
   const openingMessage = hasHistory
     ? "I'm here — feel free to keep talking!"
-    :
-    `Hey! I know ${prospectName} is doing great work. ` +
-    `I can walk you through how ${project.company_name} can specifically help. ` +
-    `What would you like to know?`;
+    : prospectName && prospectName !== "there"
+    ? `Hey! I can walk you through how ${sellerCompanyName} can help ${prospectName}. What would you like to know?`
+    : `Hey! I can walk you through how ${sellerCompanyName} can help. What would you like to know?`;
 
   // Get signed URL from ElevenLabs with overrides
   const response = await fetch(

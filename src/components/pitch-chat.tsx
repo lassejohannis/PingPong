@@ -120,7 +120,7 @@ export function PitchChat({ pitchLinkId, prospectName, productName, slides }: Pr
     <div className="flex h-[calc(100vh-56px)] overflow-hidden">
       {/* Slide panel */}
       {slides.length > 0 && (
-        <div className="w-[55%] bg-[#080808] border-r border-[#1a1a1a] flex flex-col">
+        <div className="w-[55%] bg-[#080808] border-r border-[#222] flex flex-col">
           {currentSlideData ? (
             <>
               <div className="flex-1 flex items-center justify-center p-6">
@@ -130,7 +130,7 @@ export function PitchChat({ pitchLinkId, prospectName, productName, slides }: Pr
                   className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
                 />
               </div>
-              <div className="border-t border-[#1a1a1a] px-5 py-3">
+              <div className="border-t border-[#222] px-5 py-3">
                 <p className="text-sm font-medium text-white">{currentSlideData.title}</p>
                 {currentSlideData.description && (
                   <p className="text-xs text-[#555] mt-0.5">{currentSlideData.description}</p>
@@ -152,7 +152,7 @@ export function PitchChat({ pitchLinkId, prospectName, productName, slides }: Pr
 
           {/* Slide nav */}
           {slides.length > 1 && (
-            <div className="border-t border-[#1a1a1a] p-3 flex gap-1.5 overflow-x-auto">
+            <div className="border-t border-[#222] p-3 flex gap-1.5 overflow-x-auto">
               {slides.map((s) => (
                 <button
                   key={s.slide_index}
@@ -160,7 +160,7 @@ export function PitchChat({ pitchLinkId, prospectName, productName, slides }: Pr
                   className={`shrink-0 w-14 h-9 rounded overflow-hidden border-2 transition-colors ${
                     currentSlide === s.slide_index
                       ? "border-violet-500"
-                      : "border-[#2a2a2a] hover:border-[#444]"
+                      : "border-[#333] hover:border-violet-500/40"
                   }`}
                 >
                   <img
@@ -188,7 +188,7 @@ export function PitchChat({ pitchLinkId, prospectName, productName, slides }: Pr
               <h2 className="text-lg font-semibold text-white">
                 Your personalised pitch for {prospectName}
               </h2>
-              <p className="text-sm text-[#666]">
+              <p className="text-sm text-[#888]">
                 Our AI will walk you through {productName}, answer questions, and show you the most relevant parts for your situation.
               </p>
             </div>
@@ -219,7 +219,7 @@ export function PitchChat({ pitchLinkId, prospectName, productName, slides }: Pr
                     className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
                       msg.role === "user"
                         ? "bg-violet-600 text-white rounded-br-sm"
-                        : "bg-[#111] text-[#ddd] border border-[#1e1e1e] rounded-bl-sm"
+                        : "bg-[#111] text-[#ddd] border border-[#262626] rounded-bl-sm"
                     }`}
                   >
                     {msg.content}
@@ -245,7 +245,7 @@ export function PitchChat({ pitchLinkId, prospectName, productName, slides }: Pr
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                     </svg>
                   </div>
-                  <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl rounded-bl-sm px-4 py-3">
+                  <div className="bg-[#111] border border-[#262626] rounded-2xl rounded-bl-sm px-4 py-3">
                     <div className="flex gap-1">
                       <span className="w-1.5 h-1.5 bg-[#444] rounded-full animate-bounce [animation-delay:0ms]" />
                       <span className="w-1.5 h-1.5 bg-[#444] rounded-full animate-bounce [animation-delay:150ms]" />
@@ -258,7 +258,7 @@ export function PitchChat({ pitchLinkId, prospectName, productName, slides }: Pr
             </div>
 
             {/* Input */}
-            <div className="border-t border-[#1a1a1a] p-3">
+            <div className="border-t border-[#222] p-3">
               <div className="flex gap-2">
                 <input
                   ref={inputRef}
@@ -267,7 +267,7 @@ export function PitchChat({ pitchLinkId, prospectName, productName, slides }: Pr
                   onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
                   placeholder="Ask a question..."
                   disabled={loading}
-                  className="flex-1 rounded-xl bg-[#111] border border-[#2a2a2a] text-white placeholder:text-[#444] px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors disabled:opacity-50"
+                  className="flex-1 rounded-xl bg-[#111] border border-[#333] text-white placeholder:text-[#444] px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors disabled:opacity-50"
                 />
                 <button
                   onClick={handleSend}

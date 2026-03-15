@@ -75,12 +75,12 @@ export function SuggestedQuestionsEditor({ questions, onChange }: SuggestedQuest
           onChange={(e) => setNewQuestion(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleAdd()}
           placeholder="Add a suggested question..."
-          className="flex-1 rounded-lg bg-[#0d0d0d] border border-[#2a2a2a] text-white placeholder:text-[#555] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+          className="flex-1 rounded-lg bg-[#0d0d0d] border border-[#333] text-white placeholder:text-[#555] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
         />
         <button
           onClick={handleAdd}
           disabled={!newQuestion.trim()}
-          className="px-3 py-2 rounded-lg border border-[#2a2a2a] text-[#888] hover:text-white hover:border-[#444] disabled:opacity-30 text-sm transition-colors"
+          className="px-3 py-2 rounded-lg border border-[#333] text-[#888] hover:text-white hover:border-violet-500/40 disabled:opacity-30 text-sm transition-colors"
         >
           Add
         </button>

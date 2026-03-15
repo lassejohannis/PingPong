@@ -59,7 +59,7 @@ export default function NewProjectPage() {
           <input
             id="campaign_name" name="campaign_name" type="text" required
             placeholder="Q2 Enterprise Push"
-            className="w-full rounded-lg bg-[#111] border border-[#2a2a2a] text-white placeholder:text-[#555] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors"
+            className="w-full rounded-lg bg-[#111] border border-[#333] text-white placeholder:text-[#555] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors"
           />
         </div>
 
@@ -70,7 +70,7 @@ export default function NewProjectPage() {
           <input
             id="product_name" name="product_name" type="text" required
             placeholder="PitchLink Pro"
-            className="w-full rounded-lg bg-[#111] border border-[#2a2a2a] text-white placeholder:text-[#555] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors"
+            className="w-full rounded-lg bg-[#111] border border-[#333] text-white placeholder:text-[#555] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors"
           />
         </div>
 

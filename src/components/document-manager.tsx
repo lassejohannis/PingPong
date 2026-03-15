@@ -130,7 +130,7 @@ export function DocumentManager({ projectId, initialDocuments, presentationDocId
     {deleteModal && (
       <div className="fixed inset-0 z-50 flex items-center justify-center">
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setDeleteModal(null)} />
-        <div className="relative bg-[#111] border border-[#2a2a2a] rounded-xl p-6 space-y-4 max-w-sm w-full mx-4 shadow-2xl">
+        <div className="relative bg-[#111] border border-[#333] rounded-xl p-6 space-y-4 max-w-sm w-full mx-4 shadow-2xl">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-red-500" />
             <p className="text-sm font-semibold text-white">Remove Document</p>
@@ -162,7 +162,7 @@ export function DocumentManager({ projectId, initialDocuments, presentationDocId
       </div>
     )}
 
-    <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-6 space-y-5">
+    <div className="bg-[#111] border border-[#262626] rounded-xl p-6 space-y-5">
       <div>
         <h2 className="text-sm font-semibold text-white">Documents</h2>
         <p className="text-xs text-[#555] mt-0.5">
@@ -179,7 +179,7 @@ export function DocumentManager({ projectId, initialDocuments, presentationDocId
         className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
           isDragging
             ? "border-violet-500 bg-violet-500/5"
-            : "border-[#2a2a2a] hover:border-[#444] bg-[#0d0d0d]"
+            : "border-[#333] hover:border-violet-500/40 bg-[#0d0d0d]"
         }`}
       >
         <input

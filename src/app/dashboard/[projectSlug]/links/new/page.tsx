@@ -18,11 +18,15 @@ export default async function NewLeadPage({
 
   if (!project) redirect("/dashboard");
 
+  const projectId = project.id;
+
   async function createLead(formData: FormData) {
     "use server";
     const supabase2 = await createClient();
 
     const prospectName = formData.get("prospect_name") as string;
+    const firstName = (formData.get("first_name") as string) || null;
+    const lastName = (formData.get("last_name") as string) || null;
     const prospectUrl = formData.get("prospect_url") as string;
     const contactEmail = formData.get("contact_email") as string;
     const notes = formData.get("notes") as string;
@@ -31,22 +35,23 @@ export default async function NewLeadPage({
       prospectName.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") +
       "-" + Math.random().toString(36).slice(2, 6);
 
-    const { data: lead, error } = await supabase2
-      .from("pitch_links")
+    const { data: lead, error } = await (supabase2.from("pitch_links") as ReturnType<typeof supabase2.from>)
       .insert({
-        project_id: project!.id,
+        project_id: projectId,
         prospect_name: prospectName,
+        first_name: firstName,
+        last_name: lastName,
         prospect_url: prospectUrl || null,
         contact_email: contactEmail || null,
         headline: notes || prospectName,
         slug,
         status: "active",
-      })
+      } as Record<string, unknown>)
       .select("slug")
       .single();
 
-    if (error) throw new Error(error.message);
-    redirect(`/dashboard/${projectSlug}/leads/${lead.slug}`);
+    if (error) throw new Error((error as { message: string }).message);
+    redirect(`/dashboard/${projectSlug}/leads/${(lead as { slug: string }).slug}`);
   }
 
   return (
@@ -72,8 +77,31 @@ export default async function NewLeadPage({
           <input
             id="prospect_name" name="prospect_name" type="text" required
             placeholder="Prospect Corp"
-            className="w-full rounded-lg bg-[#111] border border-[#2a2a2a] text-white placeholder:text-[#555] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors"
+            className="w-full rounded-lg bg-[#111] border border-[#333] text-white placeholder:text-[#555] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors"
           />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <label htmlFor="first_name" className="text-sm font-medium text-[#ccc]">
+              First name
+            </label>
+            <input
+              id="first_name" name="first_name" type="text"
+              placeholder="Jane"
+              className="w-full rounded-lg bg-[#111] border border-[#333] text-white placeholder:text-[#555] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="last_name" className="text-sm font-medium text-[#ccc]">
+              Last name
+            </label>
+            <input
+              id="last_name" name="last_name" type="text"
+              placeholder="Smith"
+              className="w-full rounded-lg bg-[#111] border border-[#333] text-white placeholder:text-[#555] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors"
+            />
+          </div>
         </div>
 
         <div className="space-y-1.5">
@@ -83,7 +111,7 @@ export default async function NewLeadPage({
           <input
             id="contact_email" name="contact_email" type="email"
             placeholder="jane@prospect.com"
-            className="w-full rounded-lg bg-[#111] border border-[#2a2a2a] text-white placeholder:text-[#555] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors"
+            className="w-full rounded-lg bg-[#111] border border-[#333] text-white placeholder:text-[#555] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors"
           />
         </div>
 
@@ -94,7 +122,7 @@ export default async function NewLeadPage({
           <input
             id="prospect_url" name="prospect_url" type="url"
             placeholder="https://prospect.com"
-            className="w-full rounded-lg bg-[#111] border border-[#2a2a2a] text-white placeholder:text-[#555] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors"
+            className="w-full rounded-lg bg-[#111] border border-[#333] text-white placeholder:text-[#555] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors"
           />
           <p className="text-xs text-[#555]">The AI crawls this to personalise the pitch automatically.</p>
         </div>
@@ -104,7 +132,7 @@ export default async function NewLeadPage({
           <input
             id="notes" name="notes" type="text"
             placeholder="e.g. Met at SaaStr 2025, interested in enterprise plan"
-            className="w-full rounded-lg bg-[#111] border border-[#2a2a2a] text-white placeholder:text-[#555] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors"
+            className="w-full rounded-lg bg-[#111] border border-[#333] text-white placeholder:text-[#555] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors"
           />
         </div>
 

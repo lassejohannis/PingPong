@@ -42,7 +42,7 @@ export default async function ProductPage({
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-white">Agent Tuning</h1>
-        <p className="text-sm text-[#666] mt-1">
+        <p className="text-sm text-[#888] mt-1">
           Teach the AI everything about your product.
           {userProfile?.company_name && (
             <> Company: <span className="text-[#888]">{userProfile.company_name}</span></>

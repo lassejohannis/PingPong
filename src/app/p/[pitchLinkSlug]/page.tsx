@@ -1,6 +1,65 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import PitchClient from "./pitch-client";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ pitchLinkSlug: string }>;
+}): Promise<Metadata> {
+  const { pitchLinkSlug } = await params;
+  const admin = createAdminClient();
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
+  const { data: link } = await admin
+    .from("pitch_links")
+    .select("prospect_name, prospect_logo, headline, projects(company_name, settings)")
+    .eq("slug", pitchLinkSlug)
+    .eq("status", "active")
+    .single();
+
+  let prospectName = "";
+  let productName = "Our Product";
+  let headlineText = "A personalised pitch just for you";
+
+  if (link) {
+    prospectName = link.prospect_name ?? "";
+    headlineText = link.headline || headlineText;
+    const proj = link.projects as { company_name: string; settings: Record<string, unknown> | null } | null;
+    if (proj) {
+      const s = (proj.settings ?? {}) as Record<string, unknown>;
+      productName = (s.product_name as string) || proj.company_name;
+    }
+  }
+
+  const ogImageUrl = `${appUrl}/api/og/pitch?${new URLSearchParams({
+    prospect: prospectName,
+    product: productName,
+    headline: headlineText,
+  })}`;
+
+  const title = prospectName
+    ? `Personalised pitch for ${prospectName} · ${productName}`
+    : `Your personalised pitch · ${productName}`;
+
+  return {
+    title,
+    description: `Watch this personalised pitch from ${productName}`,
+    openGraph: {
+      title,
+      description: `Watch this personalised pitch from ${productName}`,
+      images: [{ url: ogImageUrl, width: 1200, height: 630, alt: title }],
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description: `Watch this personalised pitch from ${productName}`,
+      images: [ogImageUrl],
+    },
+  };
+}
 
 interface ProspectContext {
   company_summary?: string;
@@ -30,7 +89,7 @@ export default async function PitchPage({
 
   const { data: personalLink } = await admin
     .from("pitch_links")
-    .select("id, prospect_name, prospect_logo, prospect_context, headline, project_id, projects(company_name, settings, system_prompt)")
+    .select("id, prospect_name, prospect_logo, prospect_context, headline, project_id, projects(id, user_id, company_name, settings, system_prompt)")
     .eq("slug", pitchLinkSlug)
     .eq("status", "active")
     .single();
@@ -41,7 +100,7 @@ export default async function PitchPage({
     // Fallback: look up as project slug (generic link)
     const { data: project } = await admin
       .from("projects")
-      .select("id, company_name, settings, system_prompt")
+      .select("id, user_id, company_name, settings, system_prompt")
       .eq("slug", pitchLinkSlug)
       .single();
 
@@ -49,7 +108,7 @@ export default async function PitchPage({
       isGenericLink = true;
       pitchLink = {
         id: null,
-        prospect_name: "there",
+        prospect_name: "",
         prospect_logo: null,
         prospect_context: null,
         headline: null,
@@ -62,12 +121,22 @@ export default async function PitchPage({
   if (!pitchLink) notFound();
 
   const project = pitchLink.projects as {
+    user_id: string;
     company_name: string;
     settings: Record<string, unknown> | null;
     system_prompt: string | null;
   };
 
   const settings = (project.settings ?? {}) as Record<string, unknown>;
+
+  // Fetch seller's real company name from account profile
+  const { data: userProfile } = await admin
+    .from("users")
+    .select("company_name")
+    .eq("id", project.user_id)
+    .single();
+
+  const productName = (settings.product_name as string) || userProfile?.company_name || project.company_name;
 
   // Parse prospect context
   let prospectContext: ProspectContext | null = null;
@@ -96,10 +165,8 @@ export default async function PitchPage({
     prospectContext?.custom_opening ||
     (settings.opening_message as string) ||
     (isGenericLink
-      ? `Hey! I can walk you through how ${project.company_name} can help. What would you like to know?`
-      : `Hey! I know ${pitchLink.prospect_name} is doing great work. ` +
-        `I can walk you through how ${project.company_name} can specifically help. ` +
-        `What would you like to know?`);
+      ? `Hey! I can walk you through how ${productName} can help. What would you like to know?`
+      : `Hey ${pitchLink.prospect_name}! I can walk you through how ${productName} can specifically help you. What would you like to know?`);
 
   // Suggested questions: per-lead custom + project defaults
   const defaultQuestions = [

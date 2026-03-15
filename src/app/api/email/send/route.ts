@@ -57,10 +57,10 @@ export async function POST(request: Request) {
       : {};
   const productName = settings.product_name ?? project.company_name;
 
-  type LeadRow = { slug: string; prospect_name: string; headline: string; contact_email: string };
+  type LeadRow = { slug: string; prospect_name: string; first_name: string | null; last_name: string | null; headline: string; contact_email: string };
   const { data: leads } = await supabase
     .from("pitch_links")
-    .select("slug, prospect_name, headline, contact_email")
+    .select("slug, prospect_name, first_name, last_name, headline, contact_email")
     .eq("project_id", projectId)
     .eq("status", "active")
     .not("contact_email", "is", null)
@@ -106,9 +106,13 @@ export async function POST(request: Request) {
       headline: lead.headline,
     })}`;
 
-    const personalizedSubject = subject.replace(/\{\{prospect_name\}\}/g, lead.prospect_name);
+    const contactName = [lead.first_name, lead.last_name].filter(Boolean).join(" ") || lead.prospect_name;
+    const personalizedSubject = subject
+      .replace(/\{\{prospect_name\}\}/g, lead.prospect_name)
+      .replace(/\{\{contact_name\}\}/g, contactName);
     const personalizedHtml = bodyHtml
       .replace(/\{\{prospect_name\}\}/g, lead.prospect_name)
+      .replace(/\{\{contact_name\}\}/g, contactName)
       .replace(/\{\{pitch_link_url\}\}/g, pitchUrl)
       .replace(/\{\{og_image_url\}\}/g, ogImageUrl);
 

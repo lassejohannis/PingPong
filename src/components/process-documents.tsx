@@ -333,10 +333,10 @@ export function ProcessDocuments({
     } finally {
       onProcessingChange(false);
     }
-  }, [projectId, onComplete, onProcessingChange]);
+  }, [projectId, presentationDocId, lastProcessedPresentationId, onComplete, onProcessingChange]);
 
   return (
-    <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-6 space-y-4">
+    <div className="bg-[#111] border border-[#262626] rounded-xl p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-sm font-semibold text-white">Process Documents</h2>

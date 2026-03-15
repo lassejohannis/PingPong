@@ -37,12 +37,12 @@ export default async function DashboardPage() {
             return (
               <Link
                 key={project.id}
-                href={`/dashboard/${project.slug}`}
-                className="group bg-[#111] border border-[#1e1e1e] hover:border-violet-500/40 rounded-xl p-5 flex flex-col gap-4 transition-colors"
+                href={`/dashboard/${project.slug}/product`}
+                className="group bg-[#111] border border-[#262626] hover:border-violet-500/50 rounded-xl p-5 flex flex-col gap-4 transition-all hover:bg-[#141414]"
               >
                 {/* Logo / avatar */}
                 <div className="flex items-start justify-between">
-                  <div className="w-12 h-12 rounded-xl overflow-hidden bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center shrink-0">
+                  <div className="w-12 h-12 rounded-xl overflow-hidden bg-[#1a1a1a] border border-[#333] flex items-center justify-center shrink-0">
                     {logoUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={logoUrl} alt={project.company_name} className="w-full h-full object-cover" />
@@ -50,7 +50,7 @@ export default async function DashboardPage() {
                       <span className="text-lg font-bold text-violet-400">{initial}</span>
                     )}
                   </div>
-                  <svg className="w-4 h-4 text-[#333] group-hover:text-[#666] transition-colors mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 text-[#444] group-hover:text-violet-400 transition-colors mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                 </div>
@@ -61,13 +61,13 @@ export default async function DashboardPage() {
                     {project.company_name}
                   </h2>
                   {settings.product_name && (
-                    <p className="text-xs text-[#555] mt-0.5">{settings.product_name}</p>
+                    <p className="text-xs text-[#777] mt-0.5">{settings.product_name}</p>
                   )}
                 </div>
 
                 {/* Footer */}
                 <div className="mt-auto">
-                  <p className="text-xs text-[#333]">/{project.slug}</p>
+                  <p className="text-xs text-[#555]">/{project.slug}</p>
                 </div>
               </Link>
             );
@@ -76,9 +76,9 @@ export default async function DashboardPage() {
           {/* New project card */}
           <Link
             href="/dashboard/new"
-            className="group bg-[#0d0d0d] border-2 border-dashed border-[#1e1e1e] hover:border-violet-500/30 rounded-xl p-5 flex flex-col items-center justify-center gap-2 min-h-[140px] transition-colors"
+            className="group bg-[#0d0d0d] border-2 border-dashed border-[#262626] hover:border-violet-500/30 rounded-xl p-5 flex flex-col items-center justify-center gap-2 min-h-[140px] transition-colors"
           >
-            <div className="w-10 h-10 rounded-lg bg-[#1a1a1a] group-hover:bg-violet-600/10 border border-[#2a2a2a] group-hover:border-violet-500/30 flex items-center justify-center transition-colors">
+            <div className="w-10 h-10 rounded-lg bg-[#1a1a1a] group-hover:bg-violet-600/10 border border-[#333] group-hover:border-violet-500/30 flex items-center justify-center transition-colors">
               <svg className="w-5 h-5 text-[#444] group-hover:text-violet-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
@@ -87,7 +87,7 @@ export default async function DashboardPage() {
           </Link>
         </div>
       ) : (
-        <div className="border-2 border-dashed border-[#1e1e1e] rounded-xl p-16 text-center">
+        <div className="border-2 border-dashed border-[#262626] rounded-xl p-16 text-center">
           <p className="text-[#444]">No projects yet.</p>
           <p className="text-sm text-[#333] mt-1">Create your first one to get started.</p>
         </div>

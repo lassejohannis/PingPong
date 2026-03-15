@@ -46,6 +46,7 @@ export async function POST(request: Request) {
     userMessage = `You are a B2B sales email copywriter. Take the existing email template below and rewrite it with this change: "${toneInstruction}".
 
 Keep the exact same placeholder tokens:
+- {{contact_name}} — the contact person's name (use this to open the email greeting)
 - {{prospect_name}} — the prospect's company name
 - {{pitch_link_url}} — their personalised pitch page URL
 - {{og_image_url}} — the preview image URL (keep inside the <a><img> tag exactly as shown)
@@ -66,7 +67,8 @@ ${systemPromptSnippet ? `Product context: ${systemPromptSnippet}` : ""}
 Requirements:
 - Write a subject line and HTML email body
 - Use these exact placeholder tokens in the body:
-  - {{prospect_name}} — the prospect's company name (use it to open the email)
+  - {{contact_name}} — the contact person's first + last name (use this to open the email, e.g. "Hi {{contact_name}},")
+  - {{prospect_name}} — the prospect's company name (use in body copy, not greeting)
   - {{pitch_link_url}} — their personalised pitch page URL
   - {{og_image_url}} — preview image URL
 - The email body must include this exact HTML block for the pitch preview (do not change the tags or attributes):
