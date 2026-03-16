@@ -43,19 +43,25 @@ export async function generateMetadata({
     ? `Personalised pitch for ${prospectName} · ${productName}`
     : `Your personalised pitch · ${productName}`;
 
+  const description = prospectName
+    ? `${productName} prepared a personalised interactive pitch for ${prospectName}. Watch the presentation and chat with an AI agent to learn more.`
+    : `Watch this personalised interactive pitch from ${productName}. Explore the presentation and chat with an AI agent to get your questions answered.`;
+
   return {
     title,
-    description: `Watch this personalised pitch from ${productName}`,
+    description,
     openGraph: {
       title,
-      description: `Watch this personalised pitch from ${productName}`,
+      description,
+      url: `${appUrl}/p/${pitchLinkSlug}`,
       images: [{ url: ogImageUrl, width: 1200, height: 630, alt: title }],
       type: "website",
+      siteName: "PitchLink",
     },
     twitter: {
       card: "summary_large_image",
       title,
-      description: `Watch this personalised pitch from ${productName}`,
+      description,
       images: [ogImageUrl],
     },
   };
