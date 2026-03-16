@@ -22,10 +22,12 @@ export async function generateMetadata({
   let prospectName = "";
   let productName = "Our Product";
   let headlineText = "A personalised pitch just for you";
+  let prospectLogo = "";
 
   if (link) {
     prospectName = link.prospect_name ?? "";
     headlineText = link.headline || headlineText;
+    prospectLogo = (link.prospect_logo as string) || "";
     const proj = link.projects as { company_name: string; settings: Record<string, unknown> | null } | null;
     if (proj) {
       const s = (proj.settings ?? {}) as Record<string, unknown>;
@@ -33,11 +35,13 @@ export async function generateMetadata({
     }
   }
 
-  const ogImageUrl = `${appUrl}/api/og/pitch?${new URLSearchParams({
+  const ogParams: Record<string, string> = {
     prospect: prospectName,
-    product: productName,
     headline: headlineText,
-  })}`;
+  };
+  if (prospectLogo) ogParams.logo = prospectLogo;
+
+  const ogImageUrl = `${appUrl}/api/og/pitch?${new URLSearchParams(ogParams)}`;
 
   const title = prospectName
     ? `Personalised pitch for ${prospectName} · ${productName}`

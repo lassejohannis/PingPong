@@ -5,10 +5,10 @@ export const runtime = "edge";
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const prospect = searchParams.get("prospect") ?? "Your Company";
-    const product = searchParams.get("product") ?? "Our Product";
+    const prospect = searchParams.get("prospect") || "";
     const headline =
-      searchParams.get("headline") ?? "A personalised pitch just for you";
+      searchParams.get("headline") || "A personalised pitch just for you";
+    const logo = searchParams.get("logo") || "";
 
     return new ImageResponse(
       (
@@ -20,144 +20,67 @@ export async function GET(request: Request) {
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: "#0f0f0f",
-            fontFamily: "sans-serif",
-            padding: "60px",
+            backgroundColor: "#000000",
           }}
         >
-          {/* Top label */}
-          <div
-            style={{
-              position: "absolute",
-              top: "40px",
-              left: "60px",
-              display: "flex",
-              alignItems: "center",
-            }}
-          >
-            <div
+          {/* Prospect logo */}
+          {logo ? (
+            <img
+              src={logo}
+              width="80"
+              height="80"
               style={{
-                width: "28px",
-                height: "28px",
-                borderRadius: "6px",
-                backgroundColor: "#ffffff",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                marginRight: "8px",
+                borderRadius: "16px",
+                objectFit: "cover",
+                marginBottom: "24px",
               }}
-            >
-              <div
-                style={{
-                  width: "14px",
-                  height: "14px",
-                  backgroundColor: "#000000",
-                  borderRadius: "2px",
-                  display: "flex",
-                }}
-              />
-            </div>
-            <span
-              style={{
-                color: "#e6e6e6",
-                fontSize: "18px",
-                fontWeight: 600,
-              }}
-            >
-              PitchLink
-            </span>
-          </div>
-
-          {/* Play button circle — using SVG instead of border trick */}
-          <div
-            style={{
-              width: "96px",
-              height: "96px",
-              borderRadius: "50%",
-              backgroundColor: "rgba(255,255,255,0.12)",
-              border: "3px solid rgba(255,255,255,0.3)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              marginBottom: "36px",
-            }}
-          >
-            <svg
-              width="36"
-              height="36"
-              viewBox="0 0 24 24"
-              fill="white"
-              style={{ marginLeft: "4px" }}
-            >
-              <path d="M8 5v14l11-7z" />
-            </svg>
-          </div>
+            />
+          ) : null}
 
           {/* Headline */}
           <div
             style={{
               color: "#ffffff",
-              fontSize: "42px",
+              fontSize: "48px",
               fontWeight: 700,
               textAlign: "center",
               maxWidth: "800px",
               lineHeight: 1.2,
-              marginBottom: "16px",
+              marginBottom: prospect ? "12px" : "32px",
               display: "flex",
             }}
           >
             {headline}
           </div>
 
-          {/* Personalised for */}
-          <div
-            style={{
-              color: "#8b8b8b",
-              fontSize: "22px",
-              textAlign: "center",
-              marginBottom: "40px",
-              display: "flex",
-            }}
-          >
-            Personalised for{" "}
-            <span
+          {/* Prospect name */}
+          {prospect ? (
+            <div
               style={{
-                color: "#d9d9d9",
-                fontWeight: 600,
-                marginLeft: "6px",
+                color: "#666666",
+                fontSize: "22px",
+                textAlign: "center",
+                marginBottom: "32px",
+                display: "flex",
               }}
             >
-              {prospect}
-            </span>
-          </div>
+              for {prospect}
+            </div>
+          ) : null}
 
-          {/* CTA pill */}
+          {/* Start button — matching the live page */}
           <div
             style={{
               backgroundColor: "#ffffff",
-              color: "#0f0f0f",
-              fontSize: "18px",
+              color: "#000000",
+              fontSize: "16px",
               fontWeight: 600,
-              padding: "14px 36px",
+              padding: "14px 40px",
               borderRadius: "999px",
               display: "flex",
             }}
           >
-            Watch your personalised pitch →
-          </div>
-
-          {/* Product name bottom right */}
-          <div
-            style={{
-              position: "absolute",
-              bottom: "40px",
-              right: "60px",
-              color: "#666666",
-              fontSize: "16px",
-              display: "flex",
-            }}
-          >
-            {product}
+            Start
           </div>
         </div>
       ),

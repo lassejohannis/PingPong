@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { ProspectResearchTrigger } from "@/components/prospect-research";
 import { LeadLogoUpload } from "@/components/lead-logo-upload";
 import { EmailEmbedButton } from "@/components/email-embed-button";
+import { LeadCopyButton } from "@/components/lead-copy-button";
 import { GenerateReportButton } from "@/components/generate-report-button";
 import type { ProspectProfile } from "@/lib/ai/prospect-research";
 import type { ConversationReport } from "@/app/api/research/report/route";
@@ -404,14 +405,24 @@ export default async function LeadDetailPage({
               Prospect view — this is what {lead.prospect_name} will see
             </p>
           </div>
-          <a
-            href={pitchUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs border border-[#333] text-[#888] hover:text-white hover:border-violet-500/40 rounded-lg px-3 py-1.5 transition-colors"
-          >
-            Open pitch
-          </a>
+          <div className="flex items-center gap-2">
+            <LeadCopyButton url={pitchUrl} />
+            <EmailEmbedButton
+              pitchUrl={pitchUrl}
+              ogImageUrl={ogImageUrl}
+              prospectName={lead.prospect_name}
+              headline={lead.headline || undefined}
+              productName={productName}
+            />
+            <a
+              href={pitchUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs border border-[#333] text-[#888] hover:text-white hover:border-violet-500/40 rounded-lg px-3 py-1.5 transition-colors"
+            >
+              Open pitch
+            </a>
+          </div>
         </div>
         <div className="px-4 py-4 space-y-3">
           <p className="text-sm text-[#444] text-center">
@@ -420,24 +431,13 @@ export default async function LeadDetailPage({
               : "AI agent ready — open the pitch link to start"}
           </p>
 
-          {/* Email embed */}
-          <div className="border-t border-[#222] pt-3 space-y-2">
-            <p className="text-xs text-[#555]">
-              Send as email — paste directly into Gmail as a clickable preview image:
-            </p>
-            <EmailEmbedButton
-              pitchUrl={pitchUrl}
-              ogImageUrl={ogImageUrl}
-              prospectName={lead.prospect_name}
+          <div className="rounded-lg overflow-hidden border border-[#222]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={ogImageUrl}
+              alt="Pitch preview thumbnail"
+              className="w-full"
             />
-            <div className="rounded-lg overflow-hidden border border-[#222]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={ogImageUrl}
-                alt="Pitch preview thumbnail"
-                className="w-full"
-              />
-            </div>
           </div>
         </div>
       </div>
