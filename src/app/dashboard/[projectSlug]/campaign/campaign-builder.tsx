@@ -9,6 +9,7 @@ type Lead = {
   last_name?: string | null;
   headline: string;
   contact_email: string | null;
+  prospect_logo?: string | null;
 };
 
 type Props = {
