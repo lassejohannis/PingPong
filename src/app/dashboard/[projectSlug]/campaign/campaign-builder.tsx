@@ -72,9 +72,8 @@ export function CampaignBuilder({ projectId, projectSlug, productName, leads, ap
     const pitchUrl = `${appUrl}/p/${lead.slug}`;
     const ogBaseUrl = forPreview && typeof window !== "undefined" ? window.location.origin : appUrl;
     const ogImageUrl = `${ogBaseUrl}/api/og/pitch?${new URLSearchParams({
-      prospect: lead.prospect_name,
-      product: productName,
-      headline: lead.headline,
+      headline: lead.prospect_name,
+      ...(lead.prospect_logo ? { logo: lead.prospect_logo } : {}),
     })}`;
     const contactName = [lead.first_name, lead.last_name].filter(Boolean).join(" ") || lead.prospect_name;
     return {

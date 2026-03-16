@@ -8,6 +8,7 @@ type Props = {
   prospectName: string;
   headline?: string;
   productName?: string;
+  companyName?: string;
 };
 
 export function EmailEmbedButton({
@@ -16,6 +17,7 @@ export function EmailEmbedButton({
   prospectName,
   headline,
   productName,
+  companyName,
 }: Props) {
   const [state, setState] = useState<
     "idle" | "loading" | "copied" | "fallback"
@@ -24,35 +26,31 @@ export function EmailEmbedButton({
   async function handleCopy() {
     setState("loading");
 
-    // Fetch the OG image and encode as base64 so it embeds inline in Gmail
+    // On localhost the OG image isn't publicly reachable, so fetch + base64 encode it.
+    // In production (https) the URL is public — Gmail loads it directly, no base64 needed.
     let imgSrc = ogImageUrl;
-    try {
-      const res = await fetch(ogImageUrl);
-      const blob = await res.blob();
-      imgSrc = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-    } catch {
-      // If fetch fails, fall back to URL
+    if (ogImageUrl.startsWith("http://")) {
+      try {
+        const res = await fetch(ogImageUrl);
+        const blob = await res.blob();
+        imgSrc = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      } catch {
+        // fall back to URL
+      }
     }
 
-    const title = headline || `A personalised pitch for ${prospectName}`;
-    const subtitle = productName
-      ? `${productName} prepared this interactive pitch for you`
-      : "An interactive AI-powered pitch prepared just for you";
+    const label = companyName || productName || "PitchLink";
 
-    const html = `<div style="margin:16px 0;max-width:600px;">
-  <a href="${pitchUrl}" style="text-decoration:none;color:inherit;display:block;">
-    <div style="border:1px solid #e0e0e0;border-radius:12px;overflow:hidden;background:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-      <img src="${imgSrc}" alt="Pitch preview" width="600" style="display:block;width:100%;border-bottom:1px solid #e0e0e0;" />
-      <div style="padding:16px 20px;">
-        <div style="font-size:16px;font-weight:600;color:#111111;line-height:1.3;margin-bottom:4px;">${title}</div>
-        <div style="font-size:13px;color:#666666;line-height:1.4;">${subtitle}</div>
-      </div>
-    </div>
+    // Loom-style: "ProductName — Watch Pitch" + clickable thumbnail
+    const html = `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:8px 0;">
+  <p style="margin:0 0 8px 0;"><strong>${label}</strong> — <a href="${pitchUrl}" style="color:#1a73e8;">Watch Pitch</a></p>
+  <a href="${pitchUrl}" style="display:inline-block;text-decoration:none;">
+    <img src="${imgSrc}" alt="Watch personalised pitch" width="320" style="display:block;border-radius:8px;border:1px solid #e0e0e0;" />
   </a>
 </div>`;
 

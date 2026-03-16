@@ -21,12 +21,10 @@ export async function generateMetadata({
 
   let prospectName = "";
   let productName = "Our Product";
-  let headlineText = "A personalised pitch just for you";
   let prospectLogo = "";
 
   if (link) {
     prospectName = link.prospect_name ?? "";
-    headlineText = link.headline || headlineText;
     prospectLogo = (link.prospect_logo as string) || "";
     const proj = link.projects as { company_name: string; settings: Record<string, unknown> | null } | null;
     if (proj) {
@@ -36,8 +34,7 @@ export async function generateMetadata({
   }
 
   const ogParams: Record<string, string> = {
-    prospect: prospectName,
-    headline: headlineText,
+    headline: prospectName || "A personalised pitch",
   };
   if (prospectLogo) ogParams.logo = prospectLogo;
 

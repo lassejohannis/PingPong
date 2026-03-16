@@ -40,6 +40,7 @@ export default function PitchClient({
   suggestedQuestions,
 }: PitchClientProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [slidesVisible, setSlidesVisible] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     { role: "assistant", content: openingMessage },
   ]);
@@ -62,6 +63,7 @@ export default function PitchClient({
       show_slide: async ({ slide_index }: { slide_index: number; reason?: string }) => {
         setCurrentSlide(slide_index);
         slidesViewedRef.current.add(slide_index);
+        setSlidesVisible(true);
         return `Slide ${slide_index} is now displayed.`;
       },
     },
@@ -324,9 +326,21 @@ export default function PitchClient({
         </header>
 
         <main className="flex-1 min-h-0 flex overflow-hidden">
-          {/* Left — agent orb (30%) */}
-          <div className="w-[30%] shrink-0 flex flex-col items-center justify-center gap-4 px-6">
-            <div className="w-40 h-40">
+          {/* Agent orb — centered when no slides, slides left when slides appear */}
+          <div
+            style={{
+              width: slidesVisible ? "30%" : "100%",
+              transition: "width 700ms cubic-bezier(0.4, 0, 0.2, 1)",
+            }}
+            className="shrink-0 flex flex-col items-center justify-center gap-4 px-6"
+          >
+            <div
+              style={{
+                width: slidesVisible ? "160px" : "220px",
+                height: slidesVisible ? "160px" : "220px",
+                transition: "width 700ms cubic-bezier(0.4, 0, 0.2, 1), height 700ms cubic-bezier(0.4, 0, 0.2, 1)",
+              }}
+            >
               <VoicePoweredOrb
                 enableVoiceControl={orbState !== "idle"}
                 externalIntensity={orbState === "speaking" ? 0.4 : orbState === "listening" ? 0.08 : 0}
@@ -339,9 +353,17 @@ export default function PitchClient({
             </p>
           </div>
 
-          {/* Right — slide (70%) */}
-          <div className="flex-1 min-w-0 flex flex-col items-center justify-center p-6 gap-3">
-            {slide ? (
+          {/* Slide panel — slides in from right when first slide is triggered */}
+          <div
+            style={{
+              width: slidesVisible ? "70%" : "0%",
+              opacity: slidesVisible ? 1 : 0,
+              transition: "width 700ms cubic-bezier(0.4, 0, 0.2, 1), opacity 500ms ease-in-out",
+              overflow: "hidden",
+            }}
+            className="flex flex-col items-center justify-center p-6 gap-3"
+          >
+            {slide && (
               <>
                 <div className="w-full aspect-video rounded-xl overflow-hidden border border-white/10">
                   {slide.image_url ? (
@@ -366,10 +388,6 @@ export default function PitchClient({
                   </div>
                 )}
               </>
-            ) : (
-              <div className="w-full aspect-video rounded-xl border border-white/8 flex items-center justify-center bg-white/3">
-                <p className="text-white/20 text-sm">Slides will appear here</p>
-              </div>
             )}
           </div>
         </main>
