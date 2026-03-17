@@ -107,7 +107,7 @@ export function AgentTuningPanels({
     }
 
     if (activeTab === "documents" && hasUnprocessedDocs) {
-      setGuardMessage("You have uploaded documents that haven't been processed yet. Process them to update the agent's knowledge.");
+      setGuardMessage("Your documents are saved. Hit 'Process Documents' so the AI can learn from them — or leave and do it later.");
       setGuardActions({
         onDiscard: () => setHasUnprocessedDocs(false),
       });
