@@ -1,10 +1,11 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(request: Request) {
-  const { slug, messages, slidesViewed } = await request.json() as {
+  const { slug, messages, slidesViewed, visitorEmail } = await request.json() as {
     slug: string;
     messages: { role: string; content: string }[];
     slidesViewed: number[];
+    visitorEmail?: string;
   };
 
   if (!slug || !messages) {
@@ -29,6 +30,7 @@ export async function POST(request: Request) {
       pitch_link_id: pitchLink.id,
       messages,
       slides_viewed: slidesViewed ?? [],
+      visitor_email: visitorEmail || null,
     })
     .select("id")
     .single();

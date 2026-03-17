@@ -1,3 +1,4 @@
+Initialising login role...
 export type Json =
   | string
   | number
@@ -51,6 +52,7 @@ export type Database = {
           slides_viewed: Json | null
           summary: string | null
           updated_at: string
+          visitor_email: string | null
         }
         Insert: {
           created_at?: string
@@ -63,6 +65,7 @@ export type Database = {
           slides_viewed?: Json | null
           summary?: string | null
           updated_at?: string
+          visitor_email?: string | null
         }
         Update: {
           created_at?: string
@@ -75,6 +78,7 @@ export type Database = {
           slides_viewed?: Json | null
           summary?: string | null
           updated_at?: string
+          visitor_email?: string | null
         }
         Relationships: [
           {
@@ -171,9 +175,12 @@ export type Database = {
       }
       pitch_links: {
         Row: {
+          contact_email: string | null
           created_at: string
+          first_name: string | null
           headline: string
           id: string
+          last_name: string | null
           project_id: string
           prospect_context: string | null
           prospect_logo: string | null
@@ -183,9 +190,12 @@ export type Database = {
           status: string
         }
         Insert: {
+          contact_email?: string | null
           created_at?: string
+          first_name?: string | null
           headline: string
           id?: string
+          last_name?: string | null
           project_id: string
           prospect_context?: string | null
           prospect_logo?: string | null
@@ -195,9 +205,12 @@ export type Database = {
           status?: string
         }
         Update: {
+          contact_email?: string | null
           created_at?: string
+          first_name?: string | null
           headline?: string
           id?: string
+          last_name?: string | null
           project_id?: string
           prospect_context?: string | null
           prospect_logo?: string | null
@@ -327,7 +340,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      project_has_active_pitch_link: {
+        Args: { project_uuid: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
@@ -463,3 +479,5 @@ export const Constants = {
     Enums: {},
   },
 } as const
+A new version of Supabase CLI is available: v2.78.1 (currently installed v2.75.0)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli

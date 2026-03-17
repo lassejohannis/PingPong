@@ -26,6 +26,8 @@ interface PitchClientProps {
   headline: string;
   openingMessage: string;
   suggestedQuestions: string[];
+  requireEmailGate: boolean;
+  emailGateInfoText: string | null;
 }
 
 export default function PitchClient({
@@ -38,6 +40,8 @@ export default function PitchClient({
   headline,
   openingMessage,
   suggestedQuestions,
+  requireEmailGate,
+  emailGateInfoText,
 }: PitchClientProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [slidesVisible, setSlidesVisible] = useState(false);
@@ -51,6 +55,8 @@ export default function PitchClient({
   const [voiceEnded, setVoiceEnded] = useState(false);
   const [orbState, setOrbState] = useState<"idle" | "listening" | "speaking">("idle");
   const [isVoiceConnecting, setIsVoiceConnecting] = useState(false);
+  const [visitorEmail, setVisitorEmail] = useState("");
+  const [emailGateCompleted, setEmailGateCompleted] = useState(!requireEmailGate);
 
   const voiceActiveRef = useRef(false);
   const slidesViewedRef = useRef<Set<number>>(new Set());
@@ -132,6 +138,7 @@ export default function PitchClient({
             slug,
             messages,
             slidesViewed: Array.from(slidesViewedRef.current),
+            visitorEmail: visitorEmail || null,
           }),
         });
       } catch { /* not critical */ }
@@ -215,6 +222,50 @@ export default function PitchClient({
 
   const slide = slides[currentSlide];
   const displayName = prospectName || "";
+
+  // ===================== EMAIL GATE SCREEN =====================
+  if (!emailGateCompleted) {
+    const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(visitorEmail);
+    return (
+      <div className="min-h-screen flex flex-col bg-black text-white">
+        <main className="flex-1 flex flex-col items-center justify-center gap-6 px-6">
+          {prospectLogo && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={prospectLogo} alt={displayName} className="w-20 h-20 rounded-2xl object-cover shadow-xl" />
+          )}
+          {displayName && (
+            <h1 className="text-3xl font-bold text-white text-center tracking-tight">{displayName}</h1>
+          )}
+          <div className="w-full max-w-sm space-y-4">
+            <h2 className="text-lg font-semibold text-white text-center">Before we begin</h2>
+            <p className="text-sm text-white/50 text-center leading-relaxed">
+              {emailGateInfoText || "We collect your email so we can follow up with relevant information."}
+            </p>
+            <form
+              onSubmit={(e) => { e.preventDefault(); if (isValidEmail) setEmailGateCompleted(true); }}
+              className="space-y-3"
+            >
+              <input
+                type="email"
+                value={visitorEmail}
+                onChange={(e) => setVisitorEmail(e.target.value)}
+                placeholder="your@email.com"
+                required
+                className="w-full rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/25 px-4 py-3 text-sm outline-none focus:border-white/30 transition-colors"
+              />
+              <button
+                type="submit"
+                disabled={!isValidEmail}
+                className="w-full px-6 py-3 bg-white text-black rounded-full text-sm font-semibold hover:bg-white/90 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              >
+                Continue
+              </button>
+            </form>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   // ===================== VOICE START SCREEN =====================
   if (mode === "voice" && !voiceStarted && !voiceEnded) {

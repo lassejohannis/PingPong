@@ -218,6 +218,8 @@ export default async function PitchPage({
       headline={headline}
       openingMessage={openingMessage}
       suggestedQuestions={suggestedQuestions}
+      requireEmailGate={(settings.require_email_gate as boolean) ?? false}
+      emailGateInfoText={(settings.email_gate_info_text as string) || null}
     />
   );
 }

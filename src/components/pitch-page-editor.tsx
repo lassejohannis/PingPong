@@ -32,6 +32,12 @@ export function PitchPageEditor({
   const [calendarLink, setCalendarLink] = useState(
     (settings.calendar_link as string) ?? ""
   );
+  const [requireEmailGate, setRequireEmailGate] = useState(
+    (settings.require_email_gate as boolean) ?? false
+  );
+  const [emailGateInfoText, setEmailGateInfoText] = useState(
+    (settings.email_gate_info_text as string) ?? ""
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -57,6 +63,8 @@ export function PitchPageEditor({
             opening_message: openingMessage.trim() || null,
             suggested_questions: suggestedQuestions,
             calendar_link: calendarLink.trim() || null,
+            require_email_gate: requireEmailGate,
+            email_gate_info_text: emailGateInfoText.trim() || null,
           },
         }),
       });
@@ -67,7 +75,7 @@ export function PitchPageEditor({
     } finally {
       setIsSaving(false);
     }
-  }, [projectId, headline, openingMessage, suggestedQuestions, calendarLink]);
+  }, [projectId, headline, openingMessage, suggestedQuestions, calendarLink, requireEmailGate, emailGateInfoText]);
 
   return (
     <div className="space-y-6">
@@ -159,6 +167,46 @@ export function PitchPageEditor({
               className="w-full rounded-lg bg-[#0d0d0d] border border-[#333] text-white placeholder:text-[#555] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors"
             />
             <p className="text-xs text-[#555]">The AI will share this link when a prospect wants to book a call.</p>
+          </div>
+
+          <div className="space-y-3 pt-2 border-t border-[#262626]">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="text-sm font-medium text-[#ccc]">Email Gate</label>
+                <p className="text-xs text-[#555]">Require prospects to enter their email before starting.</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={requireEmailGate}
+                onClick={() => setRequireEmailGate(!requireEmailGate)}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                  requireEmailGate ? "bg-violet-600" : "bg-[#333]"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-lg transition-transform ${
+                    requireEmailGate ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+
+            {requireEmailGate && (
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-[#ccc]">
+                  Info text <span className="text-[#444] font-normal">(optional)</span>
+                </label>
+                <textarea
+                  value={emailGateInfoText}
+                  onChange={(e) => setEmailGateInfoText(e.target.value)}
+                  placeholder="We collect your email so we can follow up with relevant information."
+                  rows={2}
+                  className="w-full rounded-lg bg-[#0d0d0d] border border-[#333] text-white placeholder:text-[#555] px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors resize-none"
+                />
+                <p className="text-xs text-[#555]">Shown below the email input. Leave empty for the default message.</p>
+              </div>
+            )}
           </div>
         </div>
 
