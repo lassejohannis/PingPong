@@ -49,6 +49,7 @@ export function BriefingChat({
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const connectingRef = useRef(false);
   const pendingChangesRef = useRef(pendingChanges);
+  const isEndingSessionRef = useRef(false);
 
   // Keep ref in sync and notify parent of pending count changes
   useEffect(() => {
@@ -239,6 +240,15 @@ export function BriefingChat({
     [messages, isStreaming, projectId, mode]
   );
 
+  // --- Session end ---
+  const endSession = useCallback(() => {
+    isEndingSessionRef.current = false;
+    setIsActive(false);
+    onActiveChange(false);
+    setMessages([]);
+    setInputMode("text");
+  }, [onActiveChange]);
+
   // --- Checkpoint / Save ---
   const handleSaveChanges = useCallback(async () => {
     if (pendingChanges.length === 0) return;
@@ -263,12 +273,13 @@ export function BriefingChat({
       }
       setPendingChanges([]);
       setShowCheckpoint(false);
+      if (isEndingSessionRef.current) endSession();
     } catch (err) {
       console.error("Failed to save changes:", err);
     } finally {
       setIsSaving(false);
     }
-  }, [projectId, pendingChanges]);
+  }, [projectId, pendingChanges, endSession]);
 
   const handleDismissCheckpoint = () => {
     setShowCheckpoint(false);
@@ -277,6 +288,9 @@ export function BriefingChat({
       setMode(pendingModeSwitch);
       setMessages([]);
       setPendingModeSwitch(null);
+    } else if (isEndingSessionRef.current) {
+      setPendingChanges([]);
+      endSession();
     }
   };
 
@@ -293,20 +307,18 @@ export function BriefingChat({
   };
 
   const handleEnd = async () => {
-    // Stop voice if active
     if (isVoiceActive) {
       await handleStopVoice();
     }
 
-    if (pendingChanges.length > 0) {
+    // Use ref to avoid stale closure — tool calls may have fired during the await
+    if (pendingChangesRef.current.length > 0) {
+      isEndingSessionRef.current = true;
       setCheckpointSummary("Session ending — save remaining changes?");
       setShowCheckpoint(true);
       return;
     }
-    setIsActive(false);
-    onActiveChange(false);
-    setMessages([]);
-    setInputMode("text");
+    endSession();
   };
 
   const handleModeSwitch = (newMode: "interview" | "test") => {
