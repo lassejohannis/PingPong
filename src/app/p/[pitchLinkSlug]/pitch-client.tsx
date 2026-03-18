@@ -18,8 +18,7 @@ interface Message {
 
 interface PitchClientProps {
   slug: string;
-  systemPrompt: string;
-  prospectContext: string | null;
+  projectId: string;
   slides: Slide[];
   prospectName: string;
   prospectLogo: string | null;
@@ -33,8 +32,7 @@ interface PitchClientProps {
 
 export default function PitchClient({
   slug,
-  systemPrompt,
-  prospectContext,
+  projectId,
   slides,
   prospectName,
   prospectLogo,
@@ -66,6 +64,7 @@ export default function PitchClient({
   const visitorEmailRef = useRef(visitorEmail);
   const messagesRef = useRef(messages);
   const hasSavedRef = useRef(false);
+  const savingInProgressRef = useRef(false);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -79,9 +78,10 @@ export default function PitchClient({
   }, [messages]);
 
   const saveConversation = useCallback(async () => {
-    if (hasSavedRef.current) return;
+    if (hasSavedRef.current || savingInProgressRef.current) return;
     const currentMessages = messagesRef.current;
     if (!currentMessages.some((m) => m.role === "user")) return;
+    savingInProgressRef.current = true;
     hasSavedRef.current = true;
     try {
       await fetch("/api/conversations/save", {
@@ -96,6 +96,8 @@ export default function PitchClient({
       });
     } catch {
       hasSavedRef.current = false; // allow beforeunload to retry
+    } finally {
+      savingInProgressRef.current = false;
     }
   }, [slug]);
 
@@ -148,7 +150,7 @@ export default function PitchClient({
 
   useEffect(() => {
     const handleBeforeUnload = () => {
-      if (hasSavedRef.current) return;
+      if (hasSavedRef.current || savingInProgressRef.current) return;
       const currentMessages = messagesRef.current;
       const hasUserMessages = currentMessages.some(m => m.role === "user");
       if (!hasUserMessages) return;
@@ -176,7 +178,7 @@ export default function PitchClient({
       const res = await fetch("/api/elevenlabs/signed-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, prospectContext, conversationHistory: messages }),
+        body: JSON.stringify({ slug, conversationHistory: messages, visitorEmail: visitorEmailRef.current || undefined }),
       });
       if (!res.ok) throw new Error("Failed to get signed URL");
       const { signedUrl, overrides } = await res.json();
@@ -218,8 +220,8 @@ export default function PitchClient({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             messages: updatedMessages.map((m) => ({ role: m.role, content: m.content })),
-            systemPrompt,
-            prospectContext,
+            projectId,
+            slug,
             slides: slides.map((s) => ({ index: s.index, title: s.title, description: s.description })),
             calendarEnabled,
             visitorEmail: visitorEmailRef.current || undefined,
@@ -228,18 +230,22 @@ export default function PitchClient({
 
         if (!response.ok) throw new Error("Chat request failed");
 
-        const reader = response.body!.getReader();
+        if (!response.body) throw new Error("Response body is null");
+        const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let assistantText = "";
         let shouldSave = false;
+        let sseBuffer = "";
 
         setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          const chunk = decoder.decode(value);
-          for (const line of chunk.split("\n")) {
+          sseBuffer += decoder.decode(value, { stream: true });
+          const lines = sseBuffer.split("\n");
+          sseBuffer = lines.pop() || "";
+          for (const line of lines) {
             if (!line.startsWith("data: ")) continue;
             try {
               const data = JSON.parse(line.slice(6));
@@ -281,7 +287,7 @@ export default function PitchClient({
         inputRef.current?.focus();
       }
     },
-    [messages, isStreaming, systemPrompt, slides, calendarEnabled, saveConversation]
+    [messages, isStreaming, projectId, slug, slides, calendarEnabled, saveConversation]
   );
 
   const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); sendMessage(input); };

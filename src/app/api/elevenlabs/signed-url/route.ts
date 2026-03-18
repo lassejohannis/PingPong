@@ -1,14 +1,50 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
+import { rateLimit, getClientIP } from "@/lib/rate-limit";
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY!;
 const ELEVENLABS_AGENT_ID = process.env.ELEVENLABS_AGENT_ID!;
 
+const signedUrlLimiter = rateLimit({ windowMs: 60_000, max: 5 });
+
+interface ProspectContext {
+  company_summary?: string;
+  industry?: string;
+  pain_points?: string[];
+  relevance_mapping?: string;
+  potential_objections?: string[];
+  personalized_opener?: string;
+  fit_score?: string;
+  fit_reasoning?: string;
+  custom_opening?: string;
+  custom_questions?: string[];
+  agent_notes?: string;
+}
+
+function formatProspectContext(ctx: ProspectContext, prospectName: string): string {
+  const lines: string[] = [];
+  if (ctx.company_summary) lines.push(`About ${prospectName}: ${ctx.company_summary}`);
+  if (ctx.industry) lines.push(`Industry: ${ctx.industry}`);
+  if (ctx.pain_points?.length) lines.push(`Their pain points: ${ctx.pain_points.join("; ")}`);
+  if (ctx.relevance_mapping) lines.push(`Why we're relevant: ${ctx.relevance_mapping}`);
+  if (ctx.potential_objections?.length) lines.push(`Likely objections: ${ctx.potential_objections.join("; ")}`);
+  if (ctx.personalized_opener) lines.push(`Suggested opener: "${ctx.personalized_opener}"`);
+  if (ctx.agent_notes) lines.push(`Important notes: ${ctx.agent_notes}`);
+  return lines.join("\n");
+}
+
 export async function POST(request: NextRequest) {
-  const { slug, prospectContext, conversationHistory } = await request.json() as {
+  // Rate limiting
+  const ip = getClientIP(request);
+  const { success } = signedUrlLimiter.check(ip);
+  if (!success) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
+  const { slug, conversationHistory, visitorEmail } = await request.json() as {
     slug: string;
-    prospectContext?: string | null;
     conversationHistory?: { role: "user" | "assistant"; content: string }[];
+    visitorEmail?: string;
   };
 
   if (!slug) {
@@ -16,13 +52,13 @@ export async function POST(request: NextRequest) {
   }
 
   // Use admin client to bypass RLS — this is a public-facing endpoint
-  // called from pitch pages, where the visitor may or may not be authenticated
   const supabase = createAdminClient();
 
   // Try pitch_links first, then fallback to projects (generic link)
   let projectData: { system_prompt: string; company_name: string; settings: Record<string, unknown> };
   let projectId: string;
   let prospectName = "there";
+  let prospectContextStr: string | null = null;
 
   const { data: pitchLink } = await supabase
     .from("pitch_links")
@@ -35,6 +71,17 @@ export async function POST(request: NextRequest) {
     projectData = pitchLink.projects as typeof projectData;
     projectId = pitchLink.project_id;
     prospectName = pitchLink.prospect_name || "there";
+
+    // Parse prospect context from DB (not from client)
+    if (pitchLink.prospect_context) {
+      try {
+        const ctx: ProspectContext = typeof pitchLink.prospect_context === "string"
+          ? JSON.parse(pitchLink.prospect_context)
+          : pitchLink.prospect_context as ProspectContext;
+        const formatted = formatProspectContext(ctx, prospectName);
+        if (formatted) prospectContextStr = formatted;
+      } catch { /* ignore malformed */ }
+    }
   } else {
     // Fallback: look up as project slug
     const { data: project } = await supabase
@@ -55,6 +102,12 @@ export async function POST(request: NextRequest) {
   }
 
   const project = projectData;
+
+  // Email gate enforcement
+  const requireEmailGate = (project.settings.require_email_gate as boolean) ?? false;
+  if (requireEmailGate && !visitorEmail) {
+    return NextResponse.json({ error: "Email required", code: "EMAIL_REQUIRED" }, { status: 403 });
+  }
 
   const { data: slides } = await supabase
     .from("slides")
@@ -112,9 +165,9 @@ Your responses will be read aloud via text-to-speech. Write in a natural, conver
 - Sound warm and enthusiastic, like you're having a real conversation, not reading a script
 - Avoid bullet points, markdown formatting, or anything visual — this is pure audio`;
 
-  // Append prospect context if available
-  if (prospectContext) {
-    fullSystemPrompt += `\n\n## Prospect Intelligence\n${prospectContext}`;
+  // Append prospect context from DB (not client)
+  if (prospectContextStr) {
+    fullSystemPrompt += `\n\n## Prospect Intelligence\n${prospectContextStr}`;
   }
 
   // Append calendar booking instructions if enabled
@@ -175,9 +228,8 @@ ${historyText}`;
   if (!response.ok) {
     const errText = await response.text();
     console.error("ElevenLabs signed URL error:", response.status, errText);
-    console.error("Agent ID used:", ELEVENLABS_AGENT_ID);
     return NextResponse.json(
-      { error: "Failed to get signed URL", status: response.status, detail: errText },
+      { error: "Failed to get signed URL" },
       { status: 500 }
     );
   }

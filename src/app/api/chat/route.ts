@@ -1,10 +1,14 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest } from "next/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { rateLimit, getClientIP } from "@/lib/rate-limit";
 
 export const maxDuration = 60;
 
 const client = new Anthropic();
 const MAX_TOOL_ITERATIONS = 15;
+
+const chatLimiter = rateLimit({ windowMs: 60_000, max: 20 });
 
 const showSlideTool: Anthropic.Tool = {
   name: "show_slide",
@@ -53,22 +57,94 @@ const endConversationTool: Anthropic.Tool = {
   input_schema: { type: "object" as const, properties: {}, required: [] },
 };
 
+interface ProspectContext {
+  company_summary?: string;
+  industry?: string;
+  pain_points?: string[];
+  relevance_mapping?: string;
+  potential_objections?: string[];
+  personalized_opener?: string;
+  fit_score?: string;
+  fit_reasoning?: string;
+  custom_opening?: string;
+  custom_questions?: string[];
+  agent_notes?: string;
+}
+
+function formatProspectContext(ctx: ProspectContext, prospectName: string): string {
+  const lines: string[] = [];
+  if (ctx.company_summary) lines.push(`About ${prospectName}: ${ctx.company_summary}`);
+  if (ctx.industry) lines.push(`Industry: ${ctx.industry}`);
+  if (ctx.pain_points?.length) lines.push(`Their pain points: ${ctx.pain_points.join("; ")}`);
+  if (ctx.relevance_mapping) lines.push(`Why we're relevant: ${ctx.relevance_mapping}`);
+  if (ctx.potential_objections?.length) lines.push(`Likely objections: ${ctx.potential_objections.join("; ")}`);
+  if (ctx.personalized_opener) lines.push(`Suggested opener: "${ctx.personalized_opener}"`);
+  if (ctx.agent_notes) lines.push(`Important notes: ${ctx.agent_notes}`);
+  return lines.join("\n");
+}
+
 export async function POST(request: NextRequest) {
+  // Rate limiting
+  const ip = getClientIP(request);
+  const { success } = chatLimiter.check(ip);
+  if (!success) {
+    return Response.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   const {
     messages,
-    systemPrompt,
-    prospectContext,
+    projectId,
+    slug,
     slides,
     calendarEnabled,
     visitorEmail,
   }: {
     messages: Anthropic.MessageParam[];
-    systemPrompt: string;
-    prospectContext?: string | null;
+    projectId: string;
+    slug: string;
     slides: { index: number; title: string; description: string }[];
     calendarEnabled?: boolean;
     visitorEmail?: string;
   } = await request.json();
+
+  // Look up project + system prompt from DB (never trust client)
+  const admin = createAdminClient();
+  const { data: project } = await admin
+    .from("projects")
+    .select("system_prompt, settings")
+    .eq("id", projectId)
+    .single();
+
+  if (!project) {
+    return Response.json({ error: "Project not found" }, { status: 404 });
+  }
+
+  const settings = (project.settings ?? {}) as Record<string, unknown>;
+
+  // Email gate enforcement
+  const requireEmailGate = (settings.require_email_gate as boolean) ?? false;
+  if (requireEmailGate && !visitorEmail) {
+    return Response.json({ error: "Email required", code: "EMAIL_REQUIRED" }, { status: 403 });
+  }
+
+  // Look up prospect context from pitch_link (if personalized)
+  let prospectContextStr: string | null = null;
+  const { data: pitchLink } = await admin
+    .from("pitch_links")
+    .select("prospect_context, prospect_name")
+    .eq("slug", slug)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (pitchLink?.prospect_context) {
+    try {
+      const ctx: ProspectContext = typeof pitchLink.prospect_context === "string"
+        ? JSON.parse(pitchLink.prospect_context)
+        : pitchLink.prospect_context as ProspectContext;
+      const formatted = formatProspectContext(ctx, pitchLink.prospect_name || "the prospect");
+      if (formatted) prospectContextStr = formatted;
+    } catch { /* ignore malformed */ }
+  }
 
   // Count user messages — enforce 30-message limit
   const userMessageCount = (messages as { role: string }[]).filter(m => m.role === "user").length;
@@ -98,6 +174,8 @@ export async function POST(request: NextRequest) {
         `Slide ${s.index}: "${s.title}" — ${s.description}`
     )
     .join("\n");
+
+  const systemPrompt = project.system_prompt || "You are a helpful sales assistant.";
 
   const fullSystemPrompt = `${systemPrompt}
 
@@ -148,7 +226,7 @@ Your responses will be read aloud via text-to-speech. Write in a natural, conver
 - Keep sentences short and punchy — long sentences sound unnatural when spoken
 - Sound warm and enthusiastic, like you're having a real conversation, not reading a script
 - Avoid bullet points, markdown formatting, or anything visual — this is pure audio`
-  + (prospectContext ? `\n\n## Prospect Intelligence\n${prospectContext}` : "")
+  + (prospectContextStr ? `\n\n## Prospect Intelligence\n${prospectContextStr}` : "")
   + (calendarEnabled ? `\n\n## Calendar Booking\nYou can check availability and book meetings directly. When the prospect wants to schedule a call:\n1. Call check_availability to get open slots\n2. Present 2-3 options naturally ("I have Tuesday at 2pm or Wednesday at 10am — which works?")\n3. Once they confirm, call book_meeting with the slot_time, their name, and email\n${visitorEmail ? `Prospect email already collected: ${visitorEmail}` : "If you don't have their email, ask for it before booking."}` : "");
 
   const tools: Anthropic.Tool[] = [showSlideTool, endConversationTool];

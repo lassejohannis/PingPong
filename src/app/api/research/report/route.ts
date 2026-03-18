@@ -1,3 +1,4 @@
+import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import Anthropic from "@anthropic-ai/sdk";
 
@@ -15,6 +16,11 @@ export type ConversationReport = {
 };
 
 export async function POST(request: Request) {
+  // Auth check — only project owners can generate reports
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
   const { conversationId } = await request.json();
   if (!conversationId) {
     return Response.json({ error: "Missing conversationId" }, { status: 400 });
@@ -29,6 +35,29 @@ export async function POST(request: Request) {
     .single() as { data: { id: string; messages: any; slides_viewed: any; project_id: string | null; visitor_email: string | null; pitch_links: any } | null };
 
   if (!conv) return Response.json({ error: "Not found" }, { status: 404 });
+
+  // Verify ownership — extract project_id and check via RLS
+  let ownershipProjectId: string | null = conv.project_id;
+  if (!ownershipProjectId && conv.pitch_links) {
+    const pl = conv.pitch_links as { prospect_name: string; projects: { company_name: string; settings: Record<string, string> | null } & { id?: string } };
+    // pitch_links join doesn't include project id directly — look it up
+    const { data: plData } = await admin
+      .from("conversations")
+      .select("pitch_links!inner(project_id)")
+      .eq("id", conversationId)
+      .single();
+    if (plData?.pitch_links) {
+      ownershipProjectId = (plData.pitch_links as unknown as { project_id: string }).project_id;
+    }
+  }
+  if (!ownershipProjectId) return Response.json({ error: "Not found" }, { status: 404 });
+
+  const { data: ownedProject } = await supabase
+    .from("projects")
+    .select("id")
+    .eq("id", ownershipProjectId)
+    .single();
+  if (!ownedProject) return Response.json({ error: "Forbidden" }, { status: 403 });
 
   let productName: string;
   let prospectName: string;

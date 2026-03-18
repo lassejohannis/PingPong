@@ -188,25 +188,10 @@ export default async function PitchPage({
   const leadQuestions = prospectContext?.custom_questions || [];
   const suggestedQuestions = [...leadQuestions, ...projectQuestions].slice(0, 6);
 
-  // Build prospect context string for system prompt
-  let prospectContextForPrompt: string | null = null;
-  if (prospectContext && !isGenericLink) {
-    const lines: string[] = [];
-    if (prospectContext.company_summary) lines.push(`About ${pitchLink.prospect_name}: ${prospectContext.company_summary}`);
-    if (prospectContext.industry) lines.push(`Industry: ${prospectContext.industry}`);
-    if (prospectContext.pain_points?.length) lines.push(`Their pain points: ${prospectContext.pain_points.join("; ")}`);
-    if (prospectContext.relevance_mapping) lines.push(`Why we're relevant: ${prospectContext.relevance_mapping}`);
-    if (prospectContext.potential_objections?.length) lines.push(`Likely objections: ${prospectContext.potential_objections.join("; ")}`);
-    if (prospectContext.personalized_opener) lines.push(`Suggested opener: "${prospectContext.personalized_opener}"`);
-    if (prospectContext.agent_notes) lines.push(`Important notes: ${prospectContext.agent_notes}`);
-    if (lines.length > 0) prospectContextForPrompt = lines.join("\n");
-  }
-
   return (
     <PitchClient
       slug={pitchLinkSlug}
-      systemPrompt={project.system_prompt || "You are a helpful sales assistant."}
-      prospectContext={prospectContextForPrompt}
+      projectId={pitchLink.project_id}
       slides={
         (slides || []).map((s) => ({
           index: s.slide_index,
