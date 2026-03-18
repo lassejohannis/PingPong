@@ -24,19 +24,33 @@ export async function POST(request: Request) {
 
   const { data: conv } = await admin
     .from("conversations")
-    .select("id, messages, slides_viewed, pitch_links(prospect_name, projects(company_name, settings))")
+    .select("id, messages, slides_viewed, project_id, visitor_email, pitch_links(prospect_name, projects(company_name, settings))" as any)
     .eq("id", conversationId)
-    .single();
+    .single() as { data: { id: string; messages: any; slides_viewed: any; project_id: string | null; visitor_email: string | null; pitch_links: any } | null };
 
   if (!conv) return Response.json({ error: "Not found" }, { status: 404 });
 
-  const pitchLink = conv.pitch_links as {
-    prospect_name: string;
-    projects: { company_name: string; settings: Record<string, string> | null };
-  };
+  let productName: string;
+  let prospectName: string;
 
-  const settings = (pitchLink.projects.settings ?? {}) as Record<string, string>;
-  const productName = settings.product_name ?? pitchLink.projects.company_name;
+  if (conv.pitch_links) {
+    const pitchLink = conv.pitch_links as {
+      prospect_name: string;
+      projects: { company_name: string; settings: Record<string, string> | null };
+    };
+    const settings = (pitchLink.projects.settings ?? {}) as Record<string, string>;
+    productName = settings.product_name ?? pitchLink.projects.company_name;
+    prospectName = pitchLink.prospect_name;
+  } else {
+    const { data: project } = await admin
+      .from("projects")
+      .select("company_name, settings")
+      .eq("id", conv.project_id!)
+      .single();
+    const settings = ((project?.settings ?? {}) as Record<string, string>);
+    productName = settings.product_name ?? project?.company_name ?? "the product";
+    prospectName = (conv.visitor_email as string) || "Anonymous visitor";
+  }
 
   const messages = (conv.messages as { role: string; content: string }[]) ?? [];
   const transcript = messages
@@ -97,7 +111,7 @@ export async function POST(request: Request) {
     messages: [
       {
         role: "user",
-        content: `Analyze this sales conversation between an AI agent for ${productName} and ${pitchLink.prospect_name}.
+        content: `Analyze this sales conversation between an AI agent for ${productName} and ${prospectName}.
 
 CONVERSATION TRANSCRIPT:
 ${transcript || "(No messages yet)"}

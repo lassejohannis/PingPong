@@ -45,13 +45,6 @@ export async function POST(request: NextRequest) {
 
   const pitchLinkIds = pitchLinkRows?.map((r) => r.id) ?? [];
 
-  if (pitchLinkIds.length === 0) {
-    return NextResponse.json(
-      { error: "Need at least 2 reports to synthesize" },
-      { status: 400 }
-    );
-  }
-
   // Fetch conversations that have reports
   type ConvRow = {
     id: string;
@@ -61,15 +54,30 @@ export async function POST(request: NextRequest) {
     pitch_links: { prospect_name: string } | null;
   };
 
-  const { data: conversations } = await admin
+  // Pitch-link conversations
+  const { data: pitchLinkConvs } = pitchLinkIds.length > 0
+    ? await admin
+        .from("conversations")
+        .select("id, messages, qualification, feedback, pitch_links(prospect_name)")
+        .in("pitch_link_id", pitchLinkIds)
+        .not("feedback", "is", null)
+        .order("updated_at", { ascending: false })
+        .returns<ConvRow[]>()
+    : { data: [] as ConvRow[] };
+
+  // Generic project conversations
+  const { data: genericConvs } = await admin
     .from("conversations")
-    .select("id, messages, qualification, feedback, pitch_links(prospect_name)")
-    .in("pitch_link_id", pitchLinkIds)
+    .select("id, messages, qualification, feedback")
+    .eq("project_id", project.id)
+    .is("pitch_link_id", null)
     .not("feedback", "is", null)
     .order("updated_at", { ascending: false })
     .returns<ConvRow[]>();
 
-  if (!conversations || conversations.length < 2) {
+  const conversations = [...(pitchLinkConvs ?? []), ...(genericConvs ?? [])];
+
+  if (conversations.length < 2) {
     return NextResponse.json(
       { error: "Need at least 2 reports to synthesize" },
       { status: 400 }

@@ -78,6 +78,27 @@ export default function PitchClient({
     messagesRef.current = messages;
   }, [messages]);
 
+  const saveConversation = useCallback(async () => {
+    if (hasSavedRef.current) return;
+    const currentMessages = messagesRef.current;
+    if (!currentMessages.some((m) => m.role === "user")) return;
+    hasSavedRef.current = true;
+    try {
+      await fetch("/api/conversations/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slug,
+          messages: currentMessages,
+          slidesViewed: Array.from(slidesViewedRef.current),
+          visitorEmail: visitorEmailRef.current || undefined,
+        }),
+      });
+    } catch {
+      hasSavedRef.current = false; // allow beforeunload to retry
+    }
+  }, [slug]);
+
   const conversation = useConversation({
     clientTools: {
       show_slide: async ({ slide_index }: { slide_index: number; reason?: string }) => {
@@ -117,7 +138,7 @@ export default function PitchClient({
       else setOrbState("idle");
     },
     onConnect: () => { setIsVoiceConnecting(false); setOrbState("listening"); },
-    onDisconnect: () => { setOrbState("idle"); },
+    onDisconnect: () => { setOrbState("idle"); saveConversation(); },
     onError: () => { setOrbState("idle"); setIsVoiceConnecting(false); },
   });
 
@@ -178,23 +199,8 @@ export default function PitchClient({
     setOrbState("idle");
     setIsStreaming(false);
     try { await conversation.endSession(); } catch { /* ignore */ }
-    const hasUserMessages = messages.some((m) => m.role === "user");
-    if (hasUserMessages) {
-      try {
-        hasSavedRef.current = true;
-        await fetch("/api/conversations/save", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            slug,
-            messages,
-            slidesViewed: Array.from(slidesViewedRef.current),
-            visitorEmail: visitorEmail || null,
-          }),
-        });
-      } catch { /* not critical */ }
-    }
-  }, [conversation, messages, slug]);
+    await saveConversation();
+  }, [conversation, saveConversation]);
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -225,6 +231,7 @@ export default function PitchClient({
         const reader = response.body!.getReader();
         const decoder = new TextDecoder();
         let assistantText = "";
+        let shouldSave = false;
 
         setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
@@ -249,6 +256,7 @@ export default function PitchClient({
                 // booking confirmation is relayed through the assistant text, no extra UI needed
               } else if (data.type === "limit_reached" || data.type === "conversation_ended") {
                 setIsLimitReached(true);
+                shouldSave = true;
               } else if (data.type === "error") {
                 const errorMsg = data.error_type === "rate_limit"
                   ? "The agent is currently busy. Please try again in a moment."
@@ -262,6 +270,7 @@ export default function PitchClient({
             } catch { /* skip malformed */ }
           }
         }
+        if (shouldSave) await saveConversation();
       } catch {
         setMessages((prev) => [
           ...prev.slice(0, -1),
@@ -272,7 +281,7 @@ export default function PitchClient({
         inputRef.current?.focus();
       }
     },
-    [messages, isStreaming, systemPrompt, slides, calendarEnabled]
+    [messages, isStreaming, systemPrompt, slides, calendarEnabled, saveConversation]
   );
 
   const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); sendMessage(input); };
@@ -394,13 +403,13 @@ export default function PitchClient({
 
         <footer className="border-t border-white/8 px-6 py-5 flex justify-center gap-3">
           <button
-            onClick={() => { setVoiceEnded(false); setVoiceStarted(false); setMode("voice"); }}
+            onClick={() => { saveConversation(); setVoiceEnded(false); setVoiceStarted(false); setMode("voice"); }}
             className="px-5 py-2.5 rounded-lg border border-white/15 text-white/60 hover:border-white/30 hover:text-white text-sm transition-colors"
           >
             New session
           </button>
           <button
-            onClick={() => { setVoiceEnded(false); setMode("text"); }}
+            onClick={() => { saveConversation(); setVoiceEnded(false); setMode("text"); }}
             className="px-5 py-2.5 rounded-lg bg-white/10 text-white/80 hover:bg-white/15 text-sm transition-colors"
           >
             Continue in text
