@@ -27,18 +27,63 @@ const showSlideTool: Anthropic.Tool = {
   },
 };
 
+const checkAvailabilityTool: Anthropic.Tool = {
+  name: "check_availability",
+  description: "Check available meeting slots for the next 7 days. Call this when the prospect wants to book a call or meeting.",
+  input_schema: { type: "object" as const, properties: {}, required: [] },
+};
+
+const bookMeetingTool: Anthropic.Tool = {
+  name: "book_meeting",
+  description: "Book a meeting slot for the prospect. Call this after the prospect confirms a specific time slot.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      slot_time: { type: "string", description: "The ISO datetime of the slot to book (from check_availability)" },
+      attendee_name: { type: "string", description: "The prospect's full name" },
+      attendee_email: { type: "string", description: "The prospect's email address" },
+    },
+    required: ["slot_time", "attendee_name", "attendee_email"],
+  },
+};
+
 export async function POST(request: NextRequest) {
   const {
     messages,
     systemPrompt,
     prospectContext,
     slides,
+    calendarEnabled,
+    visitorEmail,
   }: {
     messages: Anthropic.MessageParam[];
     systemPrompt: string;
     prospectContext?: string | null;
     slides: { index: number; title: string; description: string }[];
+    calendarEnabled?: boolean;
+    visitorEmail?: string;
   } = await request.json();
+
+  // Count user messages — enforce 30-message limit
+  const userMessageCount = (messages as { role: string }[]).filter(m => m.role === "user").length;
+  if (userMessageCount >= 30) {
+    const closingText = calendarEnabled
+      ? "We've had a great conversation! I'd love to get you connected with our team for a deeper dive. Let me pull up some available times for a call — just say the word and I'll book it for you right now."
+      : "We've had a great conversation! I'd love to get you connected with our team directly for a deeper dive. Reach out and we'll take it from there.";
+
+    const encoder = new TextEncoder();
+    const limitStream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "text_delta", text: closingText })}\n\n`));
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "limit_reached", calendarEnabled: !!calendarEnabled })}\n\n`));
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "done", stop_reason: "limit" })}\n\n`));
+        controller.close();
+      },
+    });
+    return new Response(limitStream, {
+      headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" },
+    });
+  }
 
   // Build slide context for the system prompt
   const slideContext = slides
@@ -60,7 +105,26 @@ ${slideContext}
 - Keep answers concise (2-3 sentences) unless asked for more detail
 - Never make up information not in your knowledge base
 - Reference the prospect's company and situation when relevant
-- Track whether the prospect seems hot, warm, cold, or not a fit
+
+## Conversation Style — CRITICAL
+You are not a FAQ bot. You are a proactive sales agent closing a call with the founders. Every response MUST end with a question. Never just answer and stop.
+
+**Question progression — follow this strictly:**
+1. First 1-2 exchanges: qualify — "What kind of products do you sell?", "How does your team handle this today?", "Is this for you personally or your whole team?"
+2. Next 1-2 exchanges: dig into fit — "What would need to be true for this to work for you?", "What's your biggest challenge with [topic]?"
+3. ANY sign of interest (they say yes, sounds good, interesting, could work, I like this, etc.) → STOP asking product questions. IMMEDIATELY pivot to booking. Do not wait. Do not ask another product question first.
+
+**Once interest is shown — MANDATORY booking push:**
+Say something like: "Honestly, the best next step is a quick call with our founders — they can show you exactly how this works for your situation. I can book that for you right now. What's your name and email and I'll get it locked in?"
+- Be direct and confident. Don't ask "would you like to" — assume yes and go for it.
+- If they give any resistance ("maybe later", "I'll think about it"), acknowledge it briefly then push again: "I get it — but it's just 20 minutes and completely worth it. Want me to find a slot for next week?"
+- Keep pushing until they either book or explicitly say no.
+- If calendar booking is available, use check_availability immediately and present real slots.
+
+**Rules:**
+- ALWAYS end with one question — no exceptions
+- Never ask more than one question at a time
+- The goal is a booked call. Not education. Not a satisfied prospect. A booked call.
 
 ## Speech Output Guidelines
 Your responses will be read aloud via text-to-speech. Write in a natural, conversational spoken style:
@@ -72,7 +136,11 @@ Your responses will be read aloud via text-to-speech. Write in a natural, conver
 - Keep sentences short and punchy — long sentences sound unnatural when spoken
 - Sound warm and enthusiastic, like you're having a real conversation, not reading a script
 - Avoid bullet points, markdown formatting, or anything visual — this is pure audio`
-  + (prospectContext ? `\n\n## Prospect Intelligence\n${prospectContext}` : "");
+  + (prospectContext ? `\n\n## Prospect Intelligence\n${prospectContext}` : "")
+  + (calendarEnabled ? `\n\n## Calendar Booking\nYou can check availability and book meetings directly. When the prospect wants to schedule a call:\n1. Call check_availability to get open slots\n2. Present 2-3 options naturally ("I have Tuesday at 2pm or Wednesday at 10am — which works?")\n3. Once they confirm, call book_meeting with the slot_time, their name, and email\n${visitorEmail ? `Prospect email already collected: ${visitorEmail}` : "If you don't have their email, ask for it before booking."}` : "");
+
+  const tools: Anthropic.Tool[] = [showSlideTool];
+  if (calendarEnabled) tools.push(checkAvailabilityTool, bookMeetingTool);
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -94,7 +162,7 @@ Your responses will be read aloud via text-to-speech. Write in a natural, conver
             model: "claude-sonnet-4-20250514",
             max_tokens: 4096,
             system: fullSystemPrompt,
-            tools: [showSlideTool],
+            tools,
             messages: currentMessages,
           });
 
@@ -175,6 +243,36 @@ Your responses will be read aloud via text-to-speech. Write in a natural, conver
                 type: "tool_result",
                 tool_use_id: toolUse.id,
                 content: `Slide ${input.slide_index} is now being displayed to the prospect.`,
+              });
+            }
+
+            if (toolUse.name === "check_availability") {
+              const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+              const availRes = await fetch(`${baseUrl}/api/calendar/availability`);
+              const availData = await availRes.json();
+              toolResults.push({
+                type: "tool_result",
+                tool_use_id: toolUse.id,
+                content: availData.slotsText || "No slots available.",
+              });
+            }
+
+            if (toolUse.name === "book_meeting") {
+              const input = toolUse.input as { slot_time: string; attendee_name: string; attendee_email: string };
+              const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+              const bookRes = await fetch(`${baseUrl}/api/calendar/book`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ start: input.slot_time, attendeeName: input.attendee_name, attendeeEmail: input.attendee_email }),
+              });
+              const bookData = await bookRes.json();
+              if (bookData.success) {
+                send({ type: "booking_confirmed", message: bookData.message });
+              }
+              toolResults.push({
+                type: "tool_result",
+                tool_use_id: toolUse.id,
+                content: bookData.success ? bookData.message : (bookData.error || "Booking failed."),
               });
             }
           }

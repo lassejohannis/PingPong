@@ -28,6 +28,7 @@ interface PitchClientProps {
   suggestedQuestions: string[];
   requireEmailGate: boolean;
   emailGateInfoText: string | null;
+  calendarEnabled: boolean;
 }
 
 export default function PitchClient({
@@ -42,6 +43,7 @@ export default function PitchClient({
   suggestedQuestions,
   requireEmailGate,
   emailGateInfoText,
+  calendarEnabled,
 }: PitchClientProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [slidesVisible, setSlidesVisible] = useState(false);
@@ -57,12 +59,24 @@ export default function PitchClient({
   const [isVoiceConnecting, setIsVoiceConnecting] = useState(false);
   const [visitorEmail, setVisitorEmail] = useState("");
   const [emailGateCompleted, setEmailGateCompleted] = useState(!requireEmailGate);
+  const [isLimitReached, setIsLimitReached] = useState(false);
 
   const voiceActiveRef = useRef(false);
   const slidesViewedRef = useRef<Set<number>>(new Set());
+  const visitorEmailRef = useRef(visitorEmail);
+  const messagesRef = useRef(messages);
+  const hasSavedRef = useRef(false);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    visitorEmailRef.current = visitorEmail;
+  }, [visitorEmail]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   const conversation = useConversation({
     clientTools: {
@@ -71,6 +85,24 @@ export default function PitchClient({
         slidesViewedRef.current.add(slide_index);
         setSlidesVisible(true);
         return `Slide ${slide_index} is now displayed.`;
+      },
+      check_availability: async () => {
+        if (!calendarEnabled) return "Calendar booking is not available.";
+        const res = await fetch("/api/calendar/availability");
+        const data = await res.json();
+        return data.slotsText;
+      },
+      book_meeting: async ({ slot_time, attendee_name, attendee_email }: { slot_time: string; attendee_name: string; attendee_email: string }) => {
+        if (!calendarEnabled) return "Calendar booking is not available.";
+        const email = attendee_email || visitorEmailRef.current;
+        if (!email) return "I need your email address to book the meeting. Could you share it with me?";
+        const res = await fetch("/api/calendar/book", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ start: slot_time, attendeeName: attendee_name, attendeeEmail: email }),
+        });
+        const data = await res.json();
+        return data.success ? data.message : (data.error || "Booking failed. Please try again.");
       },
     },
     onMessage: (props: { message: string; source: string }) => {
@@ -92,6 +124,24 @@ export default function PitchClient({
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (hasSavedRef.current) return;
+      const currentMessages = messagesRef.current;
+      const hasUserMessages = currentMessages.some(m => m.role === "user");
+      if (!hasUserMessages) return;
+      const payload = JSON.stringify({
+        slug,
+        messages: currentMessages,
+        slidesViewed: Array.from(slidesViewedRef.current),
+        visitorEmail: visitorEmailRef.current || undefined,
+      });
+      navigator.sendBeacon("/api/conversations/save", new Blob([payload], { type: "application/json" }));
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [slug]);
 
   const connectingRef = useRef(false);
 
@@ -131,6 +181,7 @@ export default function PitchClient({
     const hasUserMessages = messages.some((m) => m.role === "user");
     if (hasUserMessages) {
       try {
+        hasSavedRef.current = true;
         await fetch("/api/conversations/save", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -164,6 +215,8 @@ export default function PitchClient({
             systemPrompt,
             prospectContext,
             slides: slides.map((s) => ({ index: s.index, title: s.title, description: s.description })),
+            calendarEnabled,
+            visitorEmail: visitorEmailRef.current || undefined,
           }),
         });
 
@@ -192,6 +245,10 @@ export default function PitchClient({
                 });
               } else if (data.type === "slide_change") {
                 setCurrentSlide(data.slide_index);
+              } else if (data.type === "booking_confirmed") {
+                // booking confirmation is relayed through the assistant text, no extra UI needed
+              } else if (data.type === "limit_reached") {
+                setIsLimitReached(true);
               } else if (data.type === "error") {
                 const errorMsg = data.error_type === "rate_limit"
                   ? "The agent is currently busy. Please try again in a moment."
@@ -215,7 +272,7 @@ export default function PitchClient({
         inputRef.current?.focus();
       }
     },
-    [messages, isStreaming, systemPrompt, slides]
+    [messages, isStreaming, systemPrompt, slides, calendarEnabled]
   );
 
   const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); sendMessage(input); };
@@ -540,6 +597,14 @@ export default function PitchClient({
                 </div>
               )}
 
+              {isLimitReached && (
+                <div className="px-4 py-3 bg-violet-500/10 border-t border-violet-500/20 text-center">
+                  <p className="text-xs text-violet-400">
+                    {calendarEnabled ? "Session complete — the agent can book a call for you above." : "Session complete — reach out to continue the conversation."}
+                  </p>
+                </div>
+              )}
+
               <form onSubmit={handleSubmit} className="border-t border-white/8 p-3 flex gap-2">
                 <input
                   ref={inputRef}
@@ -548,11 +613,11 @@ export default function PitchClient({
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="Ask anything…"
                   className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/25 focus:outline-none focus:border-white/25 transition-colors"
-                  disabled={isStreaming}
+                  disabled={isStreaming || isLimitReached}
                 />
                 <button
                   type="submit"
-                  disabled={isStreaming || !input.trim()}
+                  disabled={isStreaming || !input.trim() || isLimitReached}
                   className="px-4 py-2 bg-white text-black rounded-lg text-sm font-medium hover:bg-white/90 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
                   →
@@ -592,6 +657,14 @@ export default function PitchClient({
               </div>
             )}
 
+            {isLimitReached && (
+              <div className="px-4 py-3 bg-violet-500/10 border-t border-violet-500/20 text-center">
+                <p className="text-xs text-violet-400">
+                  {calendarEnabled ? "Session complete — the agent can book a call for you above." : "Session complete — reach out to continue the conversation."}
+                </p>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="border-t border-white/8 px-6 py-4 flex gap-3">
               <input
                 ref={inputRef}
@@ -600,11 +673,11 @@ export default function PitchClient({
                 onChange={(e) => setInput(e.target.value)}
                 placeholder={displayName ? `Ask about ${displayName}…` : "Ask anything…"}
                 className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-white/25 transition-colors"
-                disabled={isStreaming}
+                disabled={isStreaming || isLimitReached}
               />
               <button
                 type="submit"
-                disabled={isStreaming || !input.trim()}
+                disabled={isStreaming || !input.trim() || isLimitReached}
                 className="px-6 py-3 bg-white text-black rounded-xl text-sm font-medium hover:bg-white/90 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
                 →

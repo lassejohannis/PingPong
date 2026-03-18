@@ -23,6 +23,18 @@ export default async function PitchPageSettings({
       ? (project.settings as Record<string, unknown>)
       : {};
 
+  const presentationDocId = (settings.presentation_doc_id as string) ?? null;
+
+  const { data: documents } = await supabase
+    .from("documents")
+    .select("id, file_name, file_type")
+    .eq("project_id", project.id)
+    .order("created_at", { ascending: false });
+
+  const presentationDoc = presentationDocId
+    ? (documents ?? []).find((d) => d.id === presentationDocId) ?? null
+    : null;
+
   const defaultQuestions = [
     "What does it cost?",
     "How does it work?",
@@ -37,6 +49,8 @@ export default async function PitchPageSettings({
       companyName={project.company_name}
       settings={settings}
       defaultQuestions={defaultQuestions}
+      presentationDocId={presentationDocId}
+      presentationDocName={presentationDoc?.file_name ?? null}
     />
   );
 }

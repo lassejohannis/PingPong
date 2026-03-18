@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { LogoUpload } from "./logo-upload";
 import { SuggestedQuestionsEditor } from "./suggested-questions-editor";
 import { PitchPreview } from "./pitch-preview";
@@ -11,6 +11,8 @@ interface PitchPageEditorProps {
   companyName: string;
   settings: Record<string, unknown>;
   defaultQuestions: string[];
+  presentationDocId: string | null;
+  presentationDocName: string | null;
 }
 
 export function PitchPageEditor({
@@ -19,6 +21,8 @@ export function PitchPageEditor({
   companyName,
   settings,
   defaultQuestions,
+  presentationDocId: initialPresentationDocId,
+  presentationDocName: initialPresentationDocName,
 }: PitchPageEditorProps) {
   const [headline, setHeadline] = useState(
     (settings.default_headline as string) ?? `How ${companyName} can help`
@@ -32,12 +36,21 @@ export function PitchPageEditor({
   const [calendarLink, setCalendarLink] = useState(
     (settings.calendar_link as string) ?? ""
   );
+  const [calendarBookingEnabled, setCalendarBookingEnabled] = useState(
+    (settings.calendar_booking_enabled as boolean) ?? false
+  );
   const [requireEmailGate, setRequireEmailGate] = useState(
     (settings.require_email_gate as boolean) ?? false
   );
   const [emailGateInfoText, setEmailGateInfoText] = useState(
     (settings.email_gate_info_text as string) ?? ""
   );
+  const [presentationDocName, setPresentationDocName] = useState<string | null>(initialPresentationDocName);
+  const [isUploadingPdf, setIsUploadingPdf] = useState(false);
+  const [pdfUploadError, setPdfUploadError] = useState<string | null>(null);
+  const [pdfUploadDone, setPdfUploadDone] = useState(false);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
+
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -63,6 +76,7 @@ export function PitchPageEditor({
             opening_message: openingMessage.trim() || null,
             suggested_questions: suggestedQuestions,
             calendar_link: calendarLink.trim() || null,
+            calendar_booking_enabled: calendarBookingEnabled,
             require_email_gate: requireEmailGate,
             email_gate_info_text: emailGateInfoText.trim() || null,
           },
@@ -75,7 +89,39 @@ export function PitchPageEditor({
     } finally {
       setIsSaving(false);
     }
-  }, [projectId, headline, openingMessage, suggestedQuestions, calendarLink, requireEmailGate, emailGateInfoText]);
+  }, [projectId, headline, openingMessage, suggestedQuestions, calendarLink, calendarBookingEnabled, requireEmailGate, emailGateInfoText]);
+
+  const handlePdfUpload = useCallback(async (file: File) => {
+    if (!file) return;
+    setIsUploadingPdf(true);
+    setPdfUploadError(null);
+    setPdfUploadDone(false);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("projectId", projectId);
+      const uploadRes = await fetch("/api/project/documents", { method: "POST", body: formData });
+      if (!uploadRes.ok) {
+        const data = await uploadRes.json();
+        throw new Error(data.error || "Upload failed");
+      }
+      const { document } = await uploadRes.json();
+
+      await fetch("/api/project/documents/set-presentation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId, documentId: document.id }),
+      });
+
+      setPresentationDocName(document.file_name);
+      setPdfUploadDone(true);
+      setTimeout(() => setPdfUploadDone(false), 3000);
+    } catch (err) {
+      setPdfUploadError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setIsUploadingPdf(false);
+    }
+  }, [projectId]);
 
   return (
     <div className="space-y-6">
@@ -109,6 +155,55 @@ export function PitchPageEditor({
             currentLogoUrl={(settings.logo_url as string) ?? null}
             onLogoChange={setLogoUrl}
           />
+
+          {/* Pitch Deck PDF */}
+          <div className="space-y-2 pt-2 border-t border-[#1e1e1e]">
+            <label className="text-sm font-medium text-[#ccc]">Pitch Deck</label>
+
+            {presentationDocName && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#0d0d0d] border border-[#262626]">
+                <div className="w-6 h-6 rounded bg-red-500/20 border border-red-500/30 flex items-center justify-center shrink-0">
+                  <span className="text-[9px] font-bold text-red-400">PDF</span>
+                </div>
+                <span className="text-xs text-[#ccc] truncate flex-1">{presentationDocName}</span>
+                <button
+                  onClick={() => pdfInputRef.current?.click()}
+                  className="text-[10px] text-[#555] hover:text-violet-400 transition-colors shrink-0"
+                >
+                  Replace
+                </button>
+              </div>
+            )}
+
+            <input
+              ref={pdfInputRef}
+              type="file"
+              accept=".pdf"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handlePdfUpload(file);
+                e.target.value = "";
+              }}
+            />
+
+            {!presentationDocName && (
+              <button
+                onClick={() => pdfInputRef.current?.click()}
+                disabled={isUploadingPdf}
+                className="w-full flex items-center justify-center gap-2 border border-dashed border-[#333] hover:border-violet-500/40 rounded-lg py-3 text-sm text-[#555] hover:text-violet-400 transition-colors disabled:opacity-40"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
+                </svg>
+                {isUploadingPdf ? "Uploading…" : "Upload PDF"}
+              </button>
+            )}
+
+            {isUploadingPdf && <p className="text-xs text-violet-400">Uploading…</p>}
+            {pdfUploadDone && <p className="text-xs text-emerald-400">Uploaded! Go to Agent Tuning → Documents to process it into slides.</p>}
+            {pdfUploadError && <p className="text-xs text-red-400">{pdfUploadError}</p>}
+          </div>
         </div>
 
         {/* Content */}
@@ -155,7 +250,23 @@ export function PitchPageEditor({
         <div className="bg-[#111] border border-[#262626] rounded-xl p-5 space-y-4">
           <h2 className="text-sm font-semibold text-white">Settings</h2>
 
-          <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <div>
+              <label className="text-sm font-medium text-[#ccc]">AI Calendar Booking</label>
+              <p className="text-xs text-[#555]">Let the AI check your availability and book meetings directly during the pitch.</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={calendarBookingEnabled}
+              onClick={() => setCalendarBookingEnabled(!calendarBookingEnabled)}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${calendarBookingEnabled ? "bg-violet-600" : "bg-[#333]"}`}
+            >
+              <span className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-lg transition-transform ${calendarBookingEnabled ? "translate-x-5" : "translate-x-0"}`} />
+            </button>
+          </div>
+
+          <div className="space-y-1.5 border-t border-[#262626] pt-4">
             <label className="text-sm font-medium text-[#ccc]">
               Calendar link <span className="text-[#444] font-normal">(optional)</span>
             </label>

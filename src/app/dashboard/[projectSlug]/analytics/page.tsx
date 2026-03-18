@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { GenerateReportButton } from "@/components/generate-report-button";
 import type { ConversationReport } from "@/app/api/research/report/route";
+import { SynthesizeConversations } from "@/components/synthesize-conversations";
 
 const INTEREST_COLORS = {
   HOT: "bg-red-950/60 text-red-400 border-red-800/40",
@@ -34,9 +35,10 @@ export default async function AnalyticsPage({
     created_at: string;
     updated_at: string;
     pitch_links: { prospect_name: string; slug: string } | null;
+    project_id: string | null;
   };
 
-  // Get pitch link ids for this project first
+  // Fetch via pitch links
   const { data: pitchLinkIds } = await supabase
     .from("pitch_links")
     .select("id")
@@ -44,20 +46,34 @@ export default async function AnalyticsPage({
 
   const ids = pitchLinkIds?.map((r) => r.id) ?? [];
 
-  const { data: conversations } = ids.length
-    ? await supabase
-        .from("conversations")
-        .select(
-          "id, messages, slides_viewed, qualification, summary, feedback, created_at, updated_at, pitch_links(prospect_name, slug)"
-        )
-        .in("pitch_link_id", ids)
-        .order("updated_at", { ascending: false })
-        .returns<ConvRow[]>()
-    : { data: [] as ConvRow[] };
+  const [{ data: pitchLinkConvs }, { data: genericConvs }] = await Promise.all([
+    ids.length
+      ? supabase
+          .from("conversations")
+          .select("id, messages, slides_viewed, qualification, summary, feedback, created_at, updated_at, project_id, pitch_links(prospect_name, slug)")
+          .in("pitch_link_id", ids)
+          .order("updated_at", { ascending: false })
+          .returns<ConvRow[]>()
+      : { data: [] as ConvRow[] },
+    supabase
+      .from("conversations")
+      .select("id, messages, slides_viewed, qualification, summary, feedback, created_at, updated_at, project_id, pitch_links(prospect_name, slug)")
+      .eq("project_id", project.id)
+      .order("updated_at", { ascending: false })
+      .returns<ConvRow[]>(),
+  ]);
 
-  const total = conversations?.length ?? 0;
-  const hot = conversations?.filter((c) => c.qualification === "HOT").length ?? 0;
-  const notAFit = conversations?.filter((c) => c.qualification === "NOT_A_FIT").length ?? 0;
+  // Merge and sort by updated_at descending
+  const allConvs = [...(pitchLinkConvs ?? []), ...(genericConvs ?? [])];
+  const seen = new Set<string>();
+  const conversations = allConvs
+    .filter(c => { if (seen.has(c.id)) return false; seen.add(c.id); return true; })
+    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+
+  const total = conversations.length;
+  const hot = conversations.filter((c) => c.qualification === "HOT").length;
+  const notAFit = conversations.filter((c) => c.qualification === "NOT_A_FIT").length;
+  const reportCount = conversations.filter((c) => c.feedback !== null).length;
 
   return (
     <div className="space-y-8">
@@ -65,6 +81,8 @@ export default async function AnalyticsPage({
         <h1 className="text-2xl font-bold text-white">Analytics</h1>
         <p className="text-sm text-[#888] mt-1">Track how prospects engage with your pitch links.</p>
       </div>
+
+      <SynthesizeConversations projectId={project.id} reportCount={reportCount} />
 
       {/* Summary stats */}
       <div className="grid grid-cols-3 gap-3">
@@ -106,8 +124,9 @@ export default async function AnalyticsPage({
                 <div className="flex items-start justify-between gap-4">
                   <div className="space-y-0.5">
                     <h3 className="font-semibold text-white">
-                      {(conv.pitch_links as { prospect_name: string } | null)?.prospect_name ??
-                        "Unknown prospect"}
+                      {(conv.pitch_links as { prospect_name: string } | null)?.prospect_name ?? (
+                        <span className="text-[#555] font-normal">Generic link visitor</span>
+                      )}
                     </h3>
                     <p className="text-xs text-[#555]">
                       {new Date(conv.updated_at).toLocaleDateString("en-GB", {

@@ -175,6 +175,8 @@ export default async function PitchPage({
       ? `Hey! I can walk you through how ${productName} can help. What would you like to know?`
       : `Hey ${pitchLink.prospect_name}! I can walk you through how ${productName} can specifically help you. What would you like to know?`);
 
+  const calendarEnabled = (settings.calendar_booking_enabled as boolean) ?? false;
+
   // Suggested questions: per-lead custom + project defaults
   const defaultQuestions = [
     "What does it cost?",
@@ -220,6 +222,7 @@ export default async function PitchPage({
       suggestedQuestions={suggestedQuestions}
       requireEmailGate={(settings.require_email_gate as boolean) ?? false}
       emailGateInfoText={(settings.email_gate_info_text as string) || null}
+      calendarEnabled={calendarEnabled}
     />
   );
 }
