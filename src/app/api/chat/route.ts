@@ -47,6 +47,12 @@ const bookMeetingTool: Anthropic.Tool = {
   },
 };
 
+const endConversationTool: Anthropic.Tool = {
+  name: "end_conversation",
+  description: "End the conversation immediately. Call this after 5 or more messages that are completely nonsensical, offensive, or clearly trolling (e.g. random characters, gibberish, repeated irrelevant responses). Say a brief polite goodbye first, then call this tool.",
+  input_schema: { type: "object" as const, properties: {}, required: [] },
+};
+
 export async function POST(request: NextRequest) {
   const {
     messages,
@@ -126,6 +132,12 @@ Say something like: "Honestly, the best next step is a quick call with our found
 - Never ask more than one question at a time
 - The goal is a booked call. Not education. Not a satisfied prospect. A booked call.
 
+## Troll Detection
+If the prospect sends 5 or more messages that are clearly nonsensical, gibberish, offensive, or completely unrelated to anything (e.g. "asdfgh", "blah blah blah", random insults, repeated meaningless input) — they are trolling. After the 5th such message:
+1. Say something like: "Looks like this isn't a great time — feel free to come back when you're ready. Talk soon!"
+2. Immediately call the end_conversation tool.
+Do NOT try to re-engage or ask more questions once you have detected trolling.
+
 ## Speech Output Guidelines
 Your responses will be read aloud via text-to-speech. Write in a natural, conversational spoken style:
 - Use contractions (we're, you'll, that's, it's) — never formal written style
@@ -139,7 +151,7 @@ Your responses will be read aloud via text-to-speech. Write in a natural, conver
   + (prospectContext ? `\n\n## Prospect Intelligence\n${prospectContext}` : "")
   + (calendarEnabled ? `\n\n## Calendar Booking\nYou can check availability and book meetings directly. When the prospect wants to schedule a call:\n1. Call check_availability to get open slots\n2. Present 2-3 options naturally ("I have Tuesday at 2pm or Wednesday at 10am — which works?")\n3. Once they confirm, call book_meeting with the slot_time, their name, and email\n${visitorEmail ? `Prospect email already collected: ${visitorEmail}` : "If you don't have their email, ask for it before booking."}` : "");
 
-  const tools: Anthropic.Tool[] = [showSlideTool];
+  const tools: Anthropic.Tool[] = [showSlideTool, endConversationTool];
   if (calendarEnabled) tools.push(checkAvailabilityTool, bookMeetingTool);
 
   const encoder = new TextEncoder();
@@ -274,6 +286,13 @@ Your responses will be read aloud via text-to-speech. Write in a natural, conver
                 tool_use_id: toolUse.id,
                 content: bookData.success ? bookData.message : (bookData.error || "Booking failed."),
               });
+            }
+
+            if (toolUse.name === "end_conversation") {
+              send({ type: "conversation_ended" });
+              send({ type: "done", stop_reason: "end_turn" });
+              controller.close();
+              return;
             }
           }
 

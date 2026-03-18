@@ -50,12 +50,13 @@ export async function POST(request: Request) {
 
   const { data, error } = await admin
     .from("conversations")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .insert({
       project_id: project.id,
       messages,
       slides_viewed: slidesViewed ?? [],
       visitor_email: visitorEmail || null,
-    })
+    } as any)
     .select("id")
     .single();
 

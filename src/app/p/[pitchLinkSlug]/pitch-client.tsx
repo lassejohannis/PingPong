@@ -247,7 +247,7 @@ export default function PitchClient({
                 setCurrentSlide(data.slide_index);
               } else if (data.type === "booking_confirmed") {
                 // booking confirmation is relayed through the assistant text, no extra UI needed
-              } else if (data.type === "limit_reached") {
+              } else if (data.type === "limit_reached" || data.type === "conversation_ended") {
                 setIsLimitReached(true);
               } else if (data.type === "error") {
                 const errorMsg = data.error_type === "rate_limit"
