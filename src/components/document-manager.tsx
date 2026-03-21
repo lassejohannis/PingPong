@@ -15,6 +15,8 @@ interface DocumentManagerProps {
   initialDocuments: Document[];
   presentationDocId: string | null;
   onDocsChanged?: () => void;
+  onDocumentAdded?: (doc: Document) => void;
+  onDocumentRemoved?: (docId: string) => void;
   onPresentationChange?: (docId: string | null) => void;
 }
 
@@ -36,7 +38,7 @@ function getFileBgColor(fileType: string): string {
   return "bg-[#222] text-[#888] border-[#333]";
 }
 
-export function DocumentManager({ projectId, initialDocuments, presentationDocId, onDocsChanged, onPresentationChange }: DocumentManagerProps) {
+export function DocumentManager({ projectId, initialDocuments, presentationDocId, onDocsChanged, onDocumentAdded, onDocumentRemoved, onPresentationChange }: DocumentManagerProps) {
   const [documents, setDocuments] = useState<Document[]>(initialDocuments);
   const [presDocId, setPresDocId] = useState<string | null>(presentationDocId);
   const [isDragging, setIsDragging] = useState(false);
@@ -64,6 +66,7 @@ export function DocumentManager({ projectId, initialDocuments, presentationDocId
 
       const { document } = await res.json();
       setDocuments((prev) => [document, ...prev]);
+      onDocumentAdded?.(document);
       onDocsChanged?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
@@ -97,6 +100,7 @@ export function DocumentManager({ projectId, initialDocuments, presentationDocId
     setDocuments((prev) => prev.filter((d) => d.id !== docId));
     if (presDocId === docId) setPresDocId(null);
     setDeleteModal(null);
+    onDocumentRemoved?.(docId);
 
     try {
       const res = await fetch(`/api/project/documents?id=${docId}&forgetKnowledge=${forgetKnowledge}`, { method: "DELETE" });

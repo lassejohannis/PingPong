@@ -53,6 +53,7 @@ export function AgentTuningPanels({
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [hasUnprocessedDocs, setHasUnprocessedDocs] = useState(false);
+  const [documents, setDocuments] = useState<Document[]>(initialDocuments);
   const [presentationDocId, setPresentationDocId] = useState<string | null>(
     (initialSettings.presentation_doc_id as string) ?? null
   );
@@ -246,6 +247,8 @@ export function AgentTuningPanels({
             initialDocuments={initialDocuments}
             presentationDocId={presentationDocId}
             onDocsChanged={() => setHasUnprocessedDocs(true)}
+            onDocumentAdded={(doc) => setDocuments((prev) => [doc, ...prev])}
+            onDocumentRemoved={(docId) => setDocuments((prev) => prev.filter((d) => d.id !== docId))}
             onPresentationChange={setPresentationDocId}
           />
           <ProcessDocuments
@@ -253,12 +256,12 @@ export function AgentTuningPanels({
             presentationDocId={presentationDocId}
             presentationDocUrl={(() => {
               if (!presentationDocId) return null;
-              const doc = initialDocuments.find((d) => d.id === presentationDocId);
+              const doc = documents.find((d) => d.id === presentationDocId);
               return doc?.file_url ?? null;
             })()}
             presentationDocType={(() => {
               if (!presentationDocId) return null;
-              const doc = initialDocuments.find((d) => d.id === presentationDocId);
+              const doc = documents.find((d) => d.id === presentationDocId);
               return doc?.file_type ?? null;
             })()}
             lastProcessedPresentationId={(initialSettings.last_processed_presentation_id as string) ?? null}
