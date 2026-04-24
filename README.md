@@ -5,7 +5,7 @@
 **🏆 1st place — thinc! × Cursor Hackathon (March 2026).** Built in 30 hours by a two-person team against 20+ competing teams.
 
 <p align="center">
-  <img src="docs/screenshots/01.landing.png" alt="Voice mode — WebGL orb connecting" width="100%" />
+  <img src="docs/screenshots/01-landing.png" alt="Voice mode — WebGL orb connecting" width="100%" />
 </p>
 
 ---
