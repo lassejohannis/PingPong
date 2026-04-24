@@ -4,6 +4,10 @@
 
 **🏆 1st place — thinc! × Cursor Hackathon (March 2026).** Built in 30 hours by a two-person team against 20+ competing teams.
 
+<p align="center">
+  <img src="docs/screenshots/04-pitch-voice.png" alt="Voice mode — WebGL orb connecting" width="100%" />
+</p>
+
 ---
 
 ## What it is
@@ -40,6 +44,24 @@ Seller dashboard
                       auto-research via website crawl + Claude profiling,
                       post-call qualification reports (HOT / WARM / NOT_A_FIT)
 ```
+
+## Screenshots
+
+**Prospect side — one link, three states:**
+
+| Per-prospect Start screen | Text mode | Voice mode |
+|---|---|---|
+| ![Start screen](docs/screenshots/02-pitch-start.png) | ![Text mode](docs/screenshots/03-pitch-text.png) | ![Voice mode](docs/screenshots/04-pitch-voice.png) |
+
+The Start screen carries the prospect's branding (pulled from their lead record). Text mode shows a slide deck with a chat overlay and suggested questions. Voice mode swaps the chat for a WebGL orb that reacts to mic amplitude and agent speech.
+
+**Seller side — projects, agent tuning, knowledge:**
+
+| Projects | Agent Tuning | Knowledge |
+|---|---|---|
+| ![Dashboard](docs/screenshots/05-dashboard.png) | ![Agent Tuning](docs/screenshots/06-agent-tuning.png) | ![Knowledge](docs/screenshots/07-knowledge.png) |
+
+Each project has five sub-tabs (General Info, Agent Behaviour, Documents, Knowledge, Briefing). The Knowledge view shows quality-scored answers to 12 standard questions plus custom ones — this is what Claude uses to auto-generate the system prompt.
 
 ## Tech stack
 
