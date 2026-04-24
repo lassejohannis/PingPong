@@ -125,6 +125,7 @@ You'll need accounts with [Anthropic](https://console.anthropic.com/), [ElevenLa
 
 ## Credits
 
-Built at the thinc! × Cursor Hackathon in March 2026 (1st place) in a two-person team.
+Built at the thinc! × Cursor Hackathon in March 2026 (1st place) in a two-person team:
 
-I led the technical side — everything in this repo concerning the Claude integration, ElevenLabs voice pipeline, knowledge system, document/slide extraction, prospect research, and RLS schema. My teammate owned the seller-facing UI, dashboard, email campaigns, and onboarding flows.
+- **[Lasse Johannis](https://github.com/lassejohannis)** — AI & backend: Claude integration (streaming, tool use, vision), ElevenLabs voice pipeline, knowledge system, document & slide extraction, prospect research, RLS schema
+- **[Apostolos Konias](https://github.com/apostoloskonias)** — UI & product: seller dashboard, agent-tuning panels, pitch-page editor, email campaigns with Gmail API, onboarding & auth flows
